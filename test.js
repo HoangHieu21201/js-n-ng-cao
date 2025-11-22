@@ -42,7 +42,7 @@ app.get('/', (req, res) => {
 // Frontend gọi: /api/home?page=1
 app.get('/api/home', (req, res) => {
   const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
+  const limit = parseInt(req.query.limit) || 12;
 
   if (page <= 0 || limit <= 0) {
     return res.status(400).send("Tham số page/limit không hợp lệ.");
