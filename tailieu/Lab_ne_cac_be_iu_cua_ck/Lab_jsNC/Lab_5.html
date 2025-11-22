@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab 5 - JavaScript Nâng Cao</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #e8f5e9;
+            /* nền xanh nhạt */
+        }
+
+        .container {
+            max-width: 850px;
+            margin: auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 14px;
+            box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.12);
+        }
+
+        h1 {
+            text-align: center;
+            color: #1b5e20;
+            margin-bottom: 40px;
+        }
+
+        h2 {
+            border-left: 6px solid #2e7d32;
+            padding-left: 12px;
+            color: #1b5e20;
+            margin-bottom: 18px;
+            font-size: 23px;
+        }
+
+        /* Button */
+        .btn {
+            padding: 11px 18px;
+            background: #2e7d32;
+            color: #fff;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: 0.25s;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            background-color: #1b5e20;
+        }
+
+        /* Output box */
+        .output-box {
+            border: 1px dashed #2e7d32;
+            padding: 12px 16px;
+            background: #f1f8e9;
+            border-radius: 10px;
+            min-height: 100px;
+            margin-top: 10px;
+            font-family: monospace;
+            white-space: pre-line;
+        }
+
+        /* Note text */
+        .note {
+            font-style: italic;
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Lab 5 - JavaScript Nâng Cao - PK04033</h1>
+
+        <div id="bai1">
+            <h2>Bài 1: Xử lý Callback Hell</h2>
+            <p>Mục tiêu: Viết lại code cũ bằng cách tách hàm (Named Functions) để code dễ đọc hơn, tránh lồng nhau quá
+                sâu.</p>
+            <button class="btn" onclick="runBai1()">Chạy Bài 1</button>
+            <div class="note">(Kết quả hiển thị trong Console F12 và bên dưới)</div>
+            <div id="log-b1" class="output-box">Chưa chạy...</div>
+        </div>
+
+        <div id="bai2">
+            <h2>Bài 2: Sử dụng Promise</h2>
+            <p>Mục tiêu: Chuyển đổi logic bài 1 sang sử dụng <code>Promise</code> để quản lý bất đồng bộ.</p>
+            <button class="btn" onclick="runBai2()">Chạy Bài 2</button>
+            <div id="log-b2" class="output-box">Chưa chạy...</div>
+        </div>
+
+        <div id="bai3">
+            <h2>Bài 3: Tính điểm Sinh Viên (Promise & Timeout)</h2>
+            <p>Nhập điểm Lab 1, Lab 2 (sau 3s), Lab 3 (sau 4s), Final (sau 3s) và xếp loại.</p>
+            <button class="btn" onclick="runBai3()">Bắt đầu nhập điểm</button>
+            <div id="log-b3" class="output-box">Kết quả sẽ hiện ở đây...</div>
+        </div>
+
+        <div id="bai4">
+            <h2>Bài 4: Bài tập thêm (Async/Await)</h2>
+            <p>Demo sử dụng cú pháp hiện đại <code>async/await</code> để xử lý Promise gọn gàng hơn nữa.</p>
+            <button class="btn" onclick="runBai4()">Chạy Demo Async/Await</button>
+            <div id="log-b4" class="output-box">...</div>
+        </div>
+    </div>
+
+    <script>
+        // Hàm tiện ích để ghi log ra màn hình thay vì chỉ console
+        function logToScreen(id, message) {
+            const el = document.getElementById(id);
+            el.innerText += message + "\n";
+            console.log(message);
+        }
+        function clearLog(id) { document.getElementById(id).innerText = ""; }
+
+        /* BÀI 1: XỬ LÝ CALLBACK HELL (Dùng Named Functions)*/
+
+        // Định nghĩa các hàm riêng biệt để tránh lồng nhau (Pyramid of doom)
+        function b1_ThucDay(callback) {
+            logToScreen('log-b1', "b1. Đã ngủ dậy!");
+            callback();
+        }
+
+        function b1_DanhRang(callback) {
+            logToScreen('log-b1', "b2. Đang đánh răng...");
+            setTimeout(function () {
+                logToScreen('log-b1', "-> Đã đánh răng xong!");
+                callback();
+            }, 2000); // [cite: 16]
+        }
+
+        function b1_ThayQuanAo(callback) {
+            logToScreen('log-b1', "b3. Đang thay quần áo...");
+            setTimeout(function () {
+                logToScreen('log-b1', "-> Đã thay quần áo xong!");
+                callback();
+            }, 3000); // [cite: 23]
+        }
+
+        function b1_DiHoc(callback) {
+            logToScreen('log-b1', "b4. Đang di chuyển...");
+            setTimeout(function () {
+                logToScreen('log-b1', "-> Đã đến trường!");
+                if (callback) callback();
+            }, 4000); // [cite: 35]
+        }
+
+        function runBai1() {
+            clearLog('log-b1');
+            // Gọi chuỗi hàm đã được tách ra, nhìn thoáng hơn callback hell cũ
+            b1_ThucDay(function () {
+                b1_DanhRang(function () {
+                    b1_ThayQuanAo(function () {
+                        b1_DiHoc(function () {
+                            logToScreen('log-b1', "=== KẾT THÚC BÀI 1 ===");
+                        });
+                    });
+                });
+            });
+        }
+
+
+        /*BÀI 2: SỬ DỤNG PROMISE*/
+
+        // Tạo hàm delay trả về Promise để tái sử dụng
+        const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+        function b2_ThucDay() {
+            return new Promise((resolve) => {
+                logToScreen('log-b2', "b1. Đã ngủ dậy!");
+                resolve();
+            });
+        }
+
+        function b2_DanhRang() {
+            return new Promise((resolve) => {
+                logToScreen('log-b2', "b2. Đang đánh răng...");
+                wait(2000).then(() => {
+                    logToScreen('log-b2', "-> Đã đánh răng xong!");
+                    resolve();
+                });
+            });
+        }
+
+        function b2_ThayQuanAo() {
+            return new Promise((resolve) => {
+                logToScreen('log-b2', "b3. Đang thay quần áo...");
+                wait(3000).then(() => {
+                    logToScreen('log-b2', "-> Đã thay quần áo xong!");
+                    resolve();
+                });
+            });
+        }
+
+        function b2_DiHoc() {
+            return new Promise((resolve) => {
+                logToScreen('log-b2', "b4. Đang di chuyển...");
+                wait(4000).then(() => {
+                    logToScreen('log-b2', "-> Đã đến trường!");
+                    resolve();
+                });
+            });
+        }
+
+        function runBai2() {
+            clearLog('log-b2');
+            // Promise Chain (Chuỗi Promise)
+            b2_ThucDay()
+                .then(b2_DanhRang)
+                .then(b2_ThayQuanAo)
+                .then(b2_DiHoc)
+                .then(() => {
+                    logToScreen('log-b2', "=== KẾT THÚC BÀI 2 ===");
+                })
+                .catch(err => console.error(err));
+        }
+
+
+        /* BÀI 3: TÍNH ĐIỂM VỚI PROMISE & DELAY */
+
+        function nhapDiem(monHoc, tenDiem, thoiGianCho) {
+            return new Promise((resolve, reject) => {
+                // Nếu có thời gian chờ thì chờ xong mới prompt
+                if (thoiGianCho > 0) {
+                    logToScreen('log-b3', `...Đang chờ ${thoiGianCho / 1000}s để nhập điểm ${tenDiem}...`);
+                }
+
+                setTimeout(() => {
+                    let diem = prompt(`Môn: ${monHoc}\nNhập điểm ${tenDiem}:`);
+                    // Validate điểm
+                    if (diem === null || diem === "") diem = 0;
+                    diem = parseFloat(diem);
+
+                    logToScreen('log-b3', `=> Đã nhập ${tenDiem}: ${diem}`);
+                    resolve(diem);
+                }, thoiGianCho);
+            });
+        }
+
+        function runBai3() {
+            clearLog('log-b3');
+            // 1. Nhập họ tên & môn học [cite: 58-59]
+            let hoTen = prompt("Nhập họ và tên sinh viên:");
+            let monHoc = prompt("Nhập tên môn học:");
+
+            let diemLab1, diemLab2, diemLab3, diemFinal;
+
+            logToScreen('log-b3', `Sinh viên: ${hoTen} - Môn: ${monHoc}`);
+
+            // Lab 1: Nhập ngay [cite: 62]
+            nhapDiem(monHoc, "Lab 1 (10%)", 0)
+                .then((d1) => {
+                    diemLab1 = d1;
+                    // Lab 2: Sau 3s [cite: 62]
+                    return nhapDiem(monHoc, "Lab 2 (20%)", 3000);
+                })
+                .then((d2) => {
+                    diemLab2 = d2;
+                    // Lab 3: Sau 4s [cite: 63]
+                    return nhapDiem(monHoc, "Lab 3 (30%)", 4000);
+                })
+                .then((d3) => {
+                    diemLab3 = d3;
+                    // Final: Sau 3s [cite: 64]
+                    return nhapDiem(monHoc, "Final (40%)", 3000);
+                })
+                .then((df) => {
+                    diemFinal = df;
+
+                    let dtb = (diemLab1 * 0.1) + (diemLab2 * 0.2) + (diemLab3 * 0.3) + (diemFinal * 0.4);
+                    dtb = dtb.toFixed(1); // Làm tròn 1 chữ số thập phân
+
+                    // Xếp loại 
+                    let xepLoai = "";
+                    if (dtb < 5) xepLoai = "Yếu"; // [cite: 66]
+                    else if (dtb < 7) xepLoai = "Trung Bình Khá"; // [cite: 71]
+                    else if (dtb < 8.5) xepLoai = "Khá"; // [cite: 71]
+                    else xepLoai = "Giỏi"; // [cite: 72]
+
+                    logToScreen('log-b3', `--------------------------`);
+                    logToScreen('log-b3', `ĐIỂM TRUNG BÌNH: ${dtb}`);
+                    logToScreen('log-b3', `XẾP LOẠI: ${xepLoai}`);
+                })
+                .catch((err) => {
+                    console.error(err);
+                    logToScreen('log-b3', "Có lỗi xảy ra trong quá trình nhập.");
+                });
+        }
+
+
+        /* BÀI 4: BÀI TẬP THÊM (ASYNC/AWAIT) */
+
+        function mockApiLogin(user) {
+            return new Promise((resolve, reject) => {
+                logToScreen('log-b4', "Đang đăng nhập...");
+                setTimeout(() => {
+                    if (user === "admin") resolve("Token_123456");
+                    else reject("Sai tên đăng nhập!");
+                }, 1500);
+            });
+        }
+
+        function mockApiGetData(token) {
+            return new Promise((resolve) => {
+                logToScreen('log-b4', `Đang tải dữ liệu với token: ${token}...`);
+                setTimeout(() => {
+                    resolve(["Sv A", "Sv B", "Sv C"]);
+                }, 1500);
+            });
+        }
+
+        async function runBai4() {
+            clearLog('log-b4');
+            try {
+                // Bước 1: Đăng nhập
+                // await giúp code dừng tại đây cho đến khi Promise trả về kết quả
+                const token = await mockApiLogin("admin");
+                logToScreen('log-b4', "=> Đăng nhập thành công!");
+
+                // Bước 2: Lấy dữ liệu sau khi có token
+                const data = await mockApiGetData(token);
+                logToScreen('log-b4', `=> Dữ liệu nhận được: ${data.join(", ")}`);
+
+                logToScreen('log-b4', "=== KẾT THÚC DEMO ASYNC/AWAIT ===");
+            } catch (error) {
+                logToScreen('log-b4', `Lỗi: ${error}`);
+            }
+        }
+
+    </script>
+
+</body>
+
+</html>

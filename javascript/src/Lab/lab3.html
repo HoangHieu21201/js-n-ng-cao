@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab 3 - JavaScript Nâng Cao</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+
+        .exercise {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        hr {
+            margin: 30px 0;
+            border: 0;
+            border-top: 1px solid #ddd;
+        }
+
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+        }
+
+        h2 {
+            color: #555;
+            margin-top: 15px;
+        }
+        
+        h3 {
+            color: #28a745;
+            font-family: monospace;
+            font-size: 1.2em;
+        }
+
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: 300px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-top: 5px;
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        pre {
+            background-color: #f0f0f0;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        
+        ul {
+            list-style-type: disc;
+            padding-left: 20px;
+        }
+        
+        li {
+            margin-bottom: 5px;
+        }
+        
+        .error {
+            color: #dc3545; /* Red */
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        #output4 h3 {
+            color: #333;
+            font-family: Arial, sans-serif;
+            font-size: 1.1em;
+        }
+        #output4 p {
+            margin: 0 0 10px 0;
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <!-- Bài 1 -->
+    <div class="exercise">
+        <h1>Bài 1: Object Literals</h1>
+        <p>Đối tượng `sinhvien` đã được tạo (xem console hoặc output dưới). Điểm trung bình đã được cập nhật từ 0 lên 8.5 và địa chỉ đã được thay đổi.</p>
+        <pre id="output1">...</pre>
+    </div>
+
+    <hr>
+
+    <!-- Bài 2 -->
+    <div class="exercise">
+        <h1>Bài 2: Truy xuất và cập nhật đối tượng</h1>
+        
+        <h2>Thông tin sinh viên:</h2>
+        <p><strong>Tên:</strong> <span id="student_name2"></span></p>
+        <p><strong>Tuổi:</strong> <span id="student_age2"></span></p>
+        <p><strong>Địa chỉ:</strong> <span id="student_address2"></span></p>
+        
+        <h2>Thêm môn học:</h2>
+        <div>
+            <label for="subjectName2">Subject Name</label>
+            <input type="text" id="subjectName2" value="ReactJS">
+        </div>
+        <div>
+            <label for="point2">Point</label>
+            <input type="number" id="point2" value="9">
+        </div>
+        <button id="add2">Add</button>
+        
+        <h2>Subjects:</h2>
+        <ul id="subjects2">
+            <!-- JS sẽ render danh sách môn học vào đây -->
+        </ul>
+    </div>
+
+    <hr>
+
+    <!-- Bài 3 -->
+    <div class="exercise">
+        <h1>Bài 3: Object Constructor & Inheritance</h1>
+        <p>Một đối tượng `StudentPoly` kế thừa từ `Student` đã được tạo. Các phương thức từ Bài 1 (ví dụ: `setAvgScore`) đã được thêm vào prototype của `StudentPoly`.</p>
+        <button id="create3">Tạo và hiển thị StudentPoly</button>
+        <pre id="output3">...</pre>
+    </div>
+
+    <hr>
+
+    <!-- Bài 4 -->
+    <div class="exercise">
+        <h1>Bài 4: Constructor Function và Method</h1>
+        <label>1st Person Name</label>
+        <input type="text" id="p1_name" value="Nguyễn Văn A">
+        <label>1st Person Age</label>
+        <input type="number" id="p1_age" value="25">
+        <label>1st Person Address</label>
+        <input type="text" id="p1_address" value="Hà Nội">
+        
+        <br><br>
+        
+        <label>2nd Person Name</label>
+        <input type="text" id="p2_name" value="Trần Thị B">
+        <label>2nd Person Age</label>
+        <input type="number" id="p2_age" value="30">
+        <label>2nd Person Address</label>
+        <input type="text" id="p2_address" value="TP. HCM">
+        
+        <br>
+        <button id="show4">Show profile</button>
+        
+        <div id="error4" class="error"></div>
+        <div id="output4">
+            <!-- JS sẽ render thông tin 2 người vào đây -->
+        </div>
+    </div>
+
+    <hr>
+
+
+    <script>
+        // --- Bài 1: Object Literals ---
+        var sinhvien = {
+            id: "SV001",
+            fullname: "Nguyễn Văn A",
+            email: "a.nv@fpt.edu.vn",
+            avatar: "avatar.png",
+            address: "Hà Nội",
+            study_major: "Lập trình Web",
+            avgScore: 0,
+            
+            getAvgScore: function() {
+                return this.avgScore;
+            },
+            
+            setAvgScore: function(point) {
+                this.avgScore = point;
+            },
+            
+            changeAddress: function(newAddress) {
+                this.address = newAddress;
+            }
+        };
+
+        // Chạy thử phương thức
+        sinhvien.setAvgScore(8.5);
+        sinhvien.changeAddress("TP. HCM");
+        
+        // Hiển thị
+        document.querySelector("#output1").innerText = JSON.stringify(sinhvien, null, 2);
+
+        // --- Bài 2: Truy xuất và cập nhật đối tượng ---
+        var student = {
+            name: 'Nguyen Van A',
+            age: 20,
+            address: 'Ha Noi',
+            subjects: [
+                {
+                    name: 'Javascript',
+                    point: 8
+                }
+            ]
+        };
+
+        var studentNameEl = document.querySelector("#student_name2");
+        var studentAgeEl = document.querySelector("#student_age2");
+        var studentAddressEl = document.querySelector("#student_address2");
+        var subjectsEl = document.querySelector("#subjects2");
+        var subjectNameInput = document.querySelector("#subjectName2");
+        var pointInput = document.querySelector("#point2");
+        var addBtn = document.querySelector("#add2");
+
+        function renderStudentInfo() {
+            studentNameEl.innerText = student.name;
+            studentAgeEl.innerText = student.age;
+            studentAddressEl.innerText = student.address;
+            
+            subjectsEl.innerHTML = "";
+            student.subjects.forEach(function(subject) {
+                var li = document.createElement("li");
+                li.innerText = `${subject.name} - ${subject.point}`;
+                subjectsEl.appendChild(li);
+            });
+        }
+        
+        addBtn.onclick = function() {
+            var newSubjectName = subjectNameInput.value;
+            var newPoint = parseFloat(pointInput.value);
+            
+            if (newSubjectName && !isNaN(newPoint)) {
+                student.subjects.push({
+                    name: newSubjectName,
+                    point: newPoint
+                });
+                renderStudentInfo();
+                subjectNameInput.value = "";
+                pointInput.value = "";
+            }
+        };
+
+        renderStudentInfo();
+
+        // --- Bài 3: Object Constructor & Inheritance ---
+        function Student(name, age, address, phone, birthday, subjects) {
+            this.name = name;
+            this.age = age;
+            this.address = address;
+            this.phone = phone;
+            this.birthday = birthday;
+            this.subjects = subjects; // [{ Name, Teacher, Point, Year }]
+        }
+        
+        function StudentPoly(name, age, address, phone, birthday, subjects, major) {
+            Student.call(this, name, age, address, phone, birthday, subjects);
+            this.major = major;
+            this.avgScore = 0; // Thêm thuộc tính từ Bài 1
+        }
+        
+        StudentPoly.prototype = Object.create(Student.prototype);
+        StudentPoly.prototype.constructor = StudentPoly;
+        
+        StudentPoly.prototype.getAvgScore = function() {
+            return this.avgScore;
+        };
+        
+        StudentPoly.prototype.setAvgScore = function(point) {
+            this.avgScore = point;
+        };
+        
+        StudentPoly.prototype.changeAddress = function(newAddress) {
+            this.address = newAddress;
+        };
+
+        document.querySelector("#create3").onclick = function() {
+            var aSubjects = [
+                { Name: "JS Nâng cao", Teacher: "ThayA", Point: 9, Year: 2024 },
+                { Name: "ReactJS", Teacher: "ThayB", Point: 8, Year: 2024 }
+            ];
+            
+            var svPoly = new StudentPoly(
+                "Trần Văn B", 22, "Đà Nẵng", "0987654321", "2002-02-02", 
+                aSubjects, "Thiết kế Web"
+            );
+            
+            svPoly.setAvgScore(8.5);
+            svPoly.changeAddress("Quy Nhơn");
+            
+            document.querySelector("#output3").innerText = JSON.stringify(svPoly, null, 2);
+        };
+        
+        // --- Bài 4: Constructor Function và Method ---
+        function Person() {
+            this.Name = "";
+            this.Age = 0;
+            this.Address = "";
+        }
+        
+        Person.prototype.showProfile = function() {
+            return `<h3>Họ tên: ${this.Name}</h3><p>Tuổi: ${this.Age}</p><p>Địa chỉ: ${this.Address}</p>`;
+        };
+        
+        var firstPerson = new Person();
+        var secondPerson = new Person();
+        
+        var showBtn4 = document.querySelector("#show4");
+        var errorEl4 = document.querySelector("#error4");
+        var outputEl4 = document.querySelector("#output4");
+
+        showBtn4.onclick = function() {
+            var p1Name = document.querySelector("#p1_name").value;
+            var p1Age = document.querySelector("#p1_age").value;
+            var p1Address = document.querySelector("#p1_address").value;
+            var p2Name = document.querySelector("#p2_name").value;
+            var p2Age = document.querySelector("#p2_age").value;
+            var p2Address = document.querySelector("#p2_address").value;
+
+            errorEl4.innerText = "";
+            
+            if (!p1Name || !p1Age || !p1Address || !p2Name || !p2Age || !p2Address) {
+                errorEl4.innerText = "Yêu cầu nhập đầy đủ thông tin";
+                outputEl4.innerHTML = "";
+                return;
+            }
+            
+            firstPerson.Name = p1Name;
+            firstPerson.Age = p1Age;
+            firstPerson.Address = p1Address;
+            
+            secondPerson.Name = p2Name;
+            secondPerson.Age = p2Age;
+            secondPerson.Address = p2Address;
+            
+            outputEl4.innerHTML = `
+                <h2>1st Person:</h2>
+                ${firstPerson.showProfile()}
+                <hr>
+                <h2>2nd Person:</h2>
+                ${secondPerson.showProfile()}
+            `;
+        };
+
+    </script>
+
+</body>
+
+</html>

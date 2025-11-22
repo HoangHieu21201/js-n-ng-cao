@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Lab 1</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: #e8f5e9;
+        }
+
+        h1 {
+            text-align: center;
+            color: #1b5e20;
+            margin-bottom: 40px;
+        }
+
+        .exercise { 
+            background-color: #ffffff;
+            border: 1px solid #d0d0d0; 
+            padding: 20px; 
+            margin: 20px auto;
+            border-radius: 10px;
+            max-width: 700px;
+            box-shadow: 0px 3px 10px rgba(0,0,0,0.12);
+        }
+
+        h2 { 
+            border-left: 5px solid #2e7d32;
+            padding-left: 10px;
+            color: #1b5e20;
+            margin-bottom: 15px;
+        }
+
+        /* CSS Bài 1 */
+        #target-b1 { 
+            width: 80px; 
+            height: 80px; 
+            background: #33691E; 
+            border-radius: 6px;
+            transition: 0.25s;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+        }
+        #target-b1:hover {
+            transform: scale(1.1);
+            cursor: pointer;
+        }
+
+        /* CSS Bài 2 */
+        #txtInput-b2 {
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #999;
+            width: 120px;
+        }
+
+        /* CSS Bài 3 */
+        .user_item-b3, .user_item-b4 { 
+            color: #1b5e20; 
+            cursor: pointer; 
+            padding: 5px 0;
+            transition: 0.25s;
+            font-weight: 600;
+        }
+        .user_item-b3:hover, .user_item-b4:hover {
+            color: #004d40;
+            transform: translateX(4px);
+        }
+
+        /* CSS Bài 4 */
+        .form-b4 > div { 
+            margin-bottom: 10px; 
+        }
+        .form-b4 label { 
+            display: inline-block; 
+            width: 70px; 
+            font-weight: bold;
+        }
+        .form-b4 input, .form-b4 select {
+            padding: 7px;
+            border: 1px solid #777;
+            border-radius: 5px;
+        }
+        #addAction-b4 {
+            padding: 8px 18px;
+            background: #2e7d32;
+            color: #fff;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            transition: 0.25s;
+        }
+        #addAction-b4:hover {
+            background: #1b5e20;
+        }
+
+        /* Bài 5 & 6 */
+        .form-date div { 
+            margin-bottom: 8px; 
+        }
+        .form-date label { 
+            width: 80px; 
+            display: inline-block;
+            font-weight: bold;
+        }
+        .form-date input {
+            padding: 6px;
+            width: 80px;
+            border-radius: 5px;
+            border: 1px solid #888;
+        }
+
+        button {
+            padding: 8px 16px;
+            background: #2e7d32;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.25s;
+            margin-top: 5px;
+        }
+        button:hover {
+            background-color: #1b5e20;
+        }
+
+        .output-format { 
+            font-family: monospace; 
+            color: #007bff; 
+        }
+        .output-day { 
+            font-family: monospace; 
+            font-size: 1.5em; 
+            color: #28a745; 
+        }
+    </style>
+</head>
+<body>
+
+<h1>Lab 1 - JavaScript Nâng Cao - PK04033</h1>
+
+<div class="exercise" id="bai1">
+    <h2>Bài 1: Luyện tập xử lý sự kiện</h2>
+    <p>Di chuột vào khối vuông bên dưới:</p>
+    <div id="target-b1"></div>
+</div>
+
+<div class="exercise" id="bai2">
+    <h2>Bài 2: Thuộc tính DOM</h2>
+    <p>Gõ vào ô input bên dưới:</p>
+    <input type="text" id="txtInput-b2" value="33691E">
+    <h3>Input text</h3>
+</div>
+
+<div class="exercise" id="bai3">
+    <h2>Bài 3: Render danh sách với forEach</h2>
+    <ul id="target-b3"></ul>
+</div>
+
+<div class="exercise" id="bai4">
+    <h2>Bài 4: Thêm user vào danh sách</h2>
+    <div class="form-b4">
+        <div>
+            <label>ID</label>
+            <input type="number" id="addUserID-b4">
+        </div>
+        <div>
+            <label>Name</label>
+            <input type="text" id="addUserText-b4">
+        </div>
+        <div>
+            <label>Gender</label>
+            <select id="addUserGender-b4">
+                <option value="1">male</option>
+                <option value="2">female</option>
+            </select>
+        </div>
+        <button type="button" id="addAction-b4">Add</button>
+    </div>
+
+    <ul id="target-b4"></ul>
+</div>
+
+<div class="exercise" id="bai5">
+    <h2>Bài 5: Xử lý thời gian (JS Date)</h2>
+    <div class="form-date">
+        <div><label>Date</label><input type="text" id="date-b5" value="01"></div>
+        <div><label>Month</label><input type="text" id="month-b5" value="11"></div>
+        <div><label>Year</label><input type="text" id="year-b5" value="2019"></div>
+        <button id="convertBtn-b5">Convert</button>
+    </div>
+
+    <h3 id="format1-b5" class="output-format"></h3>
+    <h3 id="format2-b5" class="output-format"></h3>
+    <h3 id="format3-b5" class="output-format"></h3>
+    <h3 id="format4-b5" class="output-format"></h3>
+    <h3 id="format5-b5" class="output-format"></h3>
+</div>
+
+<div class="exercise" id="bai6">
+    <h2>Bài 6: Moment.js</h2>
+    <div class="form-date">
+        <div><label>Date</label><input type="text" id="date-b6" value="01"></div>
+        <div><label>Month</label><input type="text" id="month-b6" value="11"></div>
+        <div><label>Year</label><input type="text" id="year-b6" value="2019"></div>
+        <button id="convertBtn-b6">Convert</button>
+    </div>
+
+    <h3 id="dayOfWeekResult-b6" class="output-day"></h3>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+
+    // Bài 1
+    (function() {
+        const target = document.querySelector("#target-b1");
+        target.onmouseover = () => target.style.backgroundColor = "#BF360C";
+        target.onmouseout = () => target.style.backgroundColor = "#33691E";
+    })();
+
+    // Bài 2
+    (function() {
+        const h3Text = document.querySelector("#txtInput-b2 + h3");
+        const txt = document.querySelector("#txtInput-b2");
+
+        txt.onkeyup = () => h3Text.innerText = txt.value;
+    })();
+
+    // Bài 3
+    (function() {
+        const users = [
+            { id: 1, name: "James Smith", gender: 1 },
+            { id: 2, name: "Isla Brown", gender: 2 },
+            { id: 3, name: "Amelia Davies", gender: 2 },
+            { id: 4, name: "Jacob Evans", gender: 1 }
+        ];
+
+        const target = document.querySelector("#target-b3");
+
+        users.forEach(u => {
+            const li = document.createElement("li");
+            li.className = "user_item-b3";
+            li.innerText = `${u.id} - ${u.name} - ${u.gender === 1 ? "male" : "female"}`;
+            target.appendChild(li);
+        });
+    })();
+
+    // Bài 4
+    (function() {
+        let users = [
+            { id: 1, name: "James Smith", gender: 1 },
+            { id: 2, name: "Isla Brown", gender: 2 },
+            { id: 3, name: "Amelia Davies", gender: 2 },
+            { id: 4, name: "Jacob Evans", gender: 1 }
+        ];
+
+        const target = document.querySelector("#target-b4");
+        const id = document.querySelector("#addUserID-b4");
+        const name = document.querySelector("#addUserText-b4");
+        const gender = document.querySelector("#addUserGender-b4");
+        const btn = document.querySelector("#addAction-b4");
+
+        function render() {
+            target.innerHTML = "";
+            users.forEach(u => {
+                const li = document.createElement("li");
+                li.className = "user_item-b4";
+                li.innerText = `${u.id} - ${u.name} - ${u.gender == 1 ? "male" : "female"}`;
+                target.appendChild(li);
+            });
+        }
+
+        btn.onclick = () => {
+            users.push({
+                id: parseInt(id.value),
+                name: name.value || "No name",
+                gender: parseInt(gender.value)
+            });
+            render();
+            id.value = "";
+            name.value = "";
+        };
+
+        render();
+    })();
+
+    // Bài 5
+    (function() {
+        const btn = document.querySelector("#convertBtn-b5");
+
+        btn.onclick = function() {
+            const day = document.querySelector("#date-b5").value;
+            const month = document.querySelector("#month-b5").value;
+            const year = document.querySelector("#year-b5").value;
+
+            const date = new Date(year, month - 1, day);
+
+            const dd = String(date.getDate()).padStart(2, "0");
+            const mm = String(date.getMonth() + 1).padStart(2, "0");
+            const yyyy = date.getFullYear();
+
+            const shortMonths = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+            const longMonths = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+            document.getElementById("format1-b5").innerText = `${yyyy}-${mm}-${dd}`;
+            document.getElementById("format2-b5").innerText = `${dd}/${mm}/${yyyy}`;
+            document.getElementById("format3-b5").innerText = `${dd}.${mm}.${yyyy}`;
+            document.getElementById("format4-b5").innerText = `${dd}, ${shortMonths[date.getMonth()]} ${yyyy}`;
+            document.getElementById("format5-b5").innerText = `${dd}, ${longMonths[date.getMonth()]} ${yyyy}`;
+        };
+    })();
+
+    // Bài 6
+    (function() {
+        const btn = document.querySelector("#convertBtn-b6");
+
+        btn.onclick = function() {
+            const day = document.querySelector("#date-b6").value;
+            const month = document.querySelector("#month-b6").value;
+            const year = document.querySelector("#year-b6").value;
+
+            const dt = moment(`${year}/${month}/${day}`, "YYYY/MM/DD");
+            document.querySelector("#dayOfWeekResult-b6").innerText = dt.format("dddd");
+        };
+    })();
+
+});
+</script>
+
+</body>
+</html>

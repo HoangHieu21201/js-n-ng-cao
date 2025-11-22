@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab 4 - JavaScript Nâng Cao (Callback & Asynchronous)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+
+        .exercise {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        hr {
+            margin: 30px 0;
+            border: 0;
+            border-top: 1px solid #ddd;
+        }
+
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+        }
+
+        h2 {
+            color: #555;
+            margin-top: 15px;
+        }
+        
+        h3 {
+            color: #28a745;
+            font-family: monospace;
+            font-size: 1.2em;
+        }
+
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: 300px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-top: 5px;
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        button.warning {
+            background-color: #ffc107;
+            color: #000;
+        }
+        
+        button.danger {
+            background-color: #dc3545;
+        }
+
+        .result-box {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+            min-height: 20px;
+        }
+        
+        ul {
+            list-style-type: disc;
+            padding-left: 20px;
+        }
+        
+        li {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        #colorBox {
+            width: 150px;
+            height: 150px;
+            background-color: #007bff;
+            margin-top: 15px;
+            border-radius: 8px;
+            transition: background-color 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        #timerDisplay {
+            font-size: 3em;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="exercise">
+        <h1>Bài 1: Tính chỉ số BMI</h1>
+        <p>Nhập chiều cao và cân nặng để tính chỉ số BMI.</p>
+        
+        <label for="weight">Cân nặng (kg):</label>
+        <input type="number" id="weight" placeholder="Ví dụ: 70">
+        
+        <label for="height">Chiều cao (cm):</label>
+        <input type="number" id="height" placeholder="Ví dụ: 175">
+        
+        <br>
+        <button id="calcBmiBtn">Tính chỉ số BMI</button>
+        
+        <div id="bmiResult" class="result-box">
+            Kết quả sẽ hiển thị ở đây...
+        </div>
+    </div>
+
+    <div class="exercise">
+        <h1>Bài 2: Đổi màu (Callback/Timeout)</h1>
+        <p>Nhấn nút bên dưới, ô vuông sẽ đổi màu ngẫu nhiên <b>sau 1 giây</b>.</p>
+        
+        <div id="colorBox">Box</div>
+        
+        <button id="changeColorBtn" class="warning">Change Color (1s delay)</button>
+    </div>
+
+    <div class="exercise">
+        <h1>Bài 3: Sắp xếp danh sách sinh viên</h1>
+        <p>Nhập tên sinh viên và danh sách sẽ tự động sắp xếp theo Alphabet.</p>
+        
+        <label for="studentName">Tên sinh viên:</label>
+        <input type="text" id="studentName" placeholder="Nhập tên (Ví dụ: An, Bình...)">
+        
+        <br>
+        <button id="addStudentBtn">Thêm vào danh sách</button>
+        <button id="resetListBtn" class="danger">Xóa danh sách</button>
+        
+        <h3>Danh sách sinh viên (Đã sắp xếp):</h3>
+        <ul id="studentListDisplay">
+        </ul>
+    </div>
+
+    <div class="exercise">
+        <h1>Bài 4: Đồng hồ đếm ngược (setInterval)</h1>
+        <p>Bài tập thêm giáo viên tự cho: Ứng dụng <code>setInterval</code> để làm bộ đếm ngược.</p>
+        
+        <label for="secondsInput">Nhập số giây:</label>
+        <input type="number" id="secondsInput" value="10">
+        
+        <div id="timerDisplay">00:00</div>
+        
+        <button id="startTimerBtn">Bắt đầu đếm</button>
+        <button id="stopTimerBtn" class="danger">Dừng</button>
+    </div>
+
+    <script>
+        const weightInput = document.getElementById('weight');
+        const heightInput = document.getElementById('height');
+        const calcBmiBtn = document.getElementById('calcBmiBtn');
+        const bmiResult = document.getElementById('bmiResult');
+
+        calcBmiBtn.onclick = function() {
+            let weight = parseFloat(weightInput.value);
+            let heightCm = parseFloat(heightInput.value);
+
+            if (!weight || !heightCm || weight <= 0 || heightCm <= 0) {
+                bmiResult.innerHTML = '<span class="error">Vui lòng nhập số hợp lệ!</span>';
+                return;
+            }
+
+            let heightM = heightCm / 100;
+            let bmi = weight / (heightM * heightM);
+            
+            let classification = "";
+            if (bmi < 18.5) classification = "(Gầy)";
+            else if (bmi < 24.9) classification = "(Bình thường)";
+            else if (bmi < 29.9) classification = "(Thừa cân)";
+            else classification = "(Béo phì)";
+
+            bmiResult.innerHTML = `
+                <h3>Chỉ số BMI của bạn là: ${bmi.toFixed(2)}</h3>
+                <p>Phân loại: <b>${classification}</b></p>
+            `;
+        };
+
+        const colorBox = document.getElementById('colorBox');
+        const changeColorBtn = document.getElementById('changeColorBtn');
+
+        function randomColor() {
+            return '#' + Math.floor(Math.random()*16777215).toString(16);
+        }
+
+        changeColorBtn.onclick = function() {
+            changeColorBtn.disabled = true;
+            changeColorBtn.innerText = "Đang chờ 1s...";
+            
+            setTimeout(function() {
+                const newColor = randomColor();
+                colorBox.style.backgroundColor = newColor;
+                colorBox.innerText = newColor;
+                
+                changeColorBtn.disabled = false;
+                changeColorBtn.innerText = "Change Color (1s delay)";
+            }, 1000);
+        };
+
+        const studentNameInput = document.getElementById('studentName');
+        const addStudentBtn = document.getElementById('addStudentBtn');
+        const resetListBtn = document.getElementById('resetListBtn');
+        const listDisplay = document.getElementById('studentListDisplay');
+        
+        let students = [];
+
+        function renderStudentList() {
+            listDisplay.innerHTML = "";
+            
+            students.sort((a, b) => a.localeCompare(b, 'vi'));
+
+            students.forEach(function(name) {
+                let li = document.createElement('li');
+                li.textContent = name;
+                listDisplay.appendChild(li);
+            });
+        }
+
+        addStudentBtn.onclick = function() {
+            let name = studentNameInput.value.trim();
+            
+            if (name) {
+                students.push(name);
+                renderStudentList();
+                studentNameInput.value = "";
+                studentNameInput.focus();
+            } else {
+                alert("Vui lòng nhập tên sinh viên!");
+            }
+        };
+        
+        resetListBtn.onclick = function() {
+            students = [];
+            renderStudentList();
+        }
+        
+        studentNameInput.addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                addStudentBtn.click();
+            }
+        });
+
+        const secondsInput = document.getElementById('secondsInput');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const startTimerBtn = document.getElementById('startTimerBtn');
+        const stopTimerBtn = document.getElementById('stopTimerBtn');
+        
+        let countdownInterval;
+        let remainingTime = 0;
+
+        function formatTime(seconds) {
+            let m = Math.floor(seconds / 60);
+            let s = seconds % 60;
+            return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+        }
+
+        startTimerBtn.onclick = function() {
+            clearInterval(countdownInterval);
+            
+            remainingTime = parseInt(secondsInput.value);
+            if (isNaN(remainingTime) || remainingTime <= 0) {
+                alert("Vui lòng nhập số giây hợp lệ!");
+                return;
+            }
+
+            timerDisplay.textContent = formatTime(remainingTime);
+            startTimerBtn.disabled = true;
+            secondsInput.disabled = true;
+
+            countdownInterval = setInterval(function() {
+                remainingTime--;
+                timerDisplay.textContent = formatTime(remainingTime);
+
+                if (remainingTime <= 0) {
+                    clearInterval(countdownInterval);
+                    timerDisplay.textContent = "Hết giờ!";
+                    timerDisplay.style.color = "red";
+                    startTimerBtn.disabled = false;
+                    secondsInput.disabled = false;
+                }
+            }, 1000);
+            
+            timerDisplay.style.color = "#333";
+        };
+
+        stopTimerBtn.onclick = function() {
+            clearInterval(countdownInterval);
+            startTimerBtn.disabled = false;
+            secondsInput.disabled = false;
+            timerDisplay.textContent = "Đã dừng";
+        };
+    </script>
+
+</body>
+
+</html>

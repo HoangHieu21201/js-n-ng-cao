@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab 4 - JavaScript Nâng Cao</title>
+    <style>
+        body { 
+    font-family: Arial, sans-serif; 
+    margin: 20px; 
+    background-color: #e8f5e9; /* nền xanh nhạt */
+}
+
+h1 {
+    text-align: center;
+    color: #1b5e20;
+    margin-bottom: 40px;
+}
+
+/* Box bài tập */
+.exercise { 
+    background-color: #ffffff;
+    border: 1px solid #c8e6c9; 
+    padding: 20px; 
+    margin: 20px auto;
+    border-radius: 14px;
+    max-width: 850px;
+    box-shadow: 0px 4px 15px rgba(0,0,0,0.12);
+}
+
+h2 { 
+    border-left: 6px solid #2e7d32;
+    padding-left: 12px;
+    color: #1b5e20;
+    margin-bottom: 18px;
+    font-size: 23px;
+}
+
+/* Form */
+.form-group {
+    margin-bottom: 14px;
+}
+
+.form-group label {
+    display: inline-block;
+    width: 170px;
+    font-weight: bold;
+    color: #1b5e20;
+}
+
+input[type=text],
+input[type=number] {
+    padding: 9px;
+    width: 260px;
+    border-radius: 6px;
+    border: 1px solid #777;
+    outline: none;
+    background: #fafafa;
+    transition: 0.2s;
+}
+
+input[type=text]:focus,
+input[type=number]:focus {
+    border-color: #2e7d32;
+    background: #fff;
+}
+
+/* Button */
+button,
+input[type="button"] {
+    padding: 11px 18px;
+    background: #2e7d32;
+    color: #fff;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: 0.25s;
+    font-size: 14px;
+}
+
+button:hover,
+input[type="button"]:hover {
+    background-color: #1b5e20;
+}
+
+/* Output box */
+.result,
+.output-profile {
+    border: 1px dashed #2e7d32;
+    padding: 12px 16px;
+    background: #f1f8e9;
+    border-radius: 10px;
+    min-width: 220px;
+    margin-top: 10px;
+}
+
+/* Danh sách */
+ul#student-list {
+    list-style-type: disc;
+    padding-left: 25px;
+    margin-top: 10px;
+}
+
+ul#student-list li {
+    background: #f1f8e9;
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 6px;
+}
+
+/* Flex cho bài 4 */
+#bai4 div[style*="display: flex"] {
+    flex-wrap: wrap;
+}
+
+#bai4 .form-group {
+    margin-bottom: 10px;
+}
+
+    </style>
+</head>
+<body>
+    <h1>Lab 4 - JavaScript Nâng Cao - PK04033</h1>
+
+    <div class="exercise" id="bai1">
+        <h2>Bài 1: Tính chỉ số BMI</h2>
+        <p>Nhập chiều cao (cm) và cân nặng (kg):</p>
+        
+        <div class="form-group">
+            <label>Cân nặng (kg)</label>
+            <input type="number" id="weight" placeholder="Ví dụ: 70">
+        </div>
+        <div class="form-group">
+            <label>Chiều cao (cm)</label>
+            <input type="number" id="height" placeholder="Ví dụ: 170">
+        </div>
+        
+        <button id="btn-bmi">Enter</button>
+        <div id="result-bmi" class="result"></div>
+    </div>
+
+    <div class="exercise" id="bai2">
+        <h2>Bài 2: Đổi màu sau 1s (Async)</h2>
+        <p>Nhấn nút và chờ 1 giây để thấy ô vuông đổi màu.</p>
+        
+        <div id="color-box"></div>
+        <button id="btn-color">Change color</button>
+    </div>
+
+    <div class="exercise" id="bai3">
+        <h2>Bài 3: Sắp xếp danh sách sinh viên</h2>
+        <p>Nhập tên và nhấn "Thêm", sau đó nhấn "Sắp xếp".</p>
+        
+        <div class="form-group" style="display: flex; gap: 10px;">
+            <input type="text" id="student-name" placeholder="Nhập tên sinh viên...">
+            <button id="btn-add-student" style="background-color: #2ecc71;">Thêm</button>
+        </div>
+        
+        <button id="btn-sort-student">Sắp xếp (A-Z)</button>
+        
+        <h3>Danh sách:</h3>
+        <ul id="student-list">
+            </ul>
+    </div>
+
+    <div class="exercise" id="bai4">
+        <h2>Bài 4: Bài tập thêm (Demo Fetch API)</h2>
+        <p>Bấm nút để lấy một câu trích dẫn ngẫu nhiên từ API:</p>
+        <button id="btn-fetch">Lấy dữ liệu</button>
+        <div id="result-fetch" class="result" style="color: #555; font-style: italic;"></div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+
+            // BÀI 1: TÍNH BMI
+            // Nguồn [cite: 474-480]
+            const btnBMI = document.getElementById('btn-bmi');
+            const resultBMI = document.getElementById('result-bmi');
+
+            btnBMI.onclick = function() {
+                const w = parseFloat(document.getElementById('weight').value);
+                const h_cm = parseFloat(document.getElementById('height').value);
+
+                if (!w || !h_cm) {
+                    resultBMI.innerText = "Vui lòng nhập đầy đủ thông tin!";
+                    return;
+                }
+
+                const h_m = h_cm / 100; 
+                const bmi = w / (h_m * h_m);
+
+                let phanLoai = "";
+                if (bmi < 18.5) phanLoai = "(Gầy)";
+                else if (bmi < 24.9) phanLoai = "(Bình thường)";
+                else phanLoai = "(Thừa cân)";
+
+                resultBMI.innerText = `Chỉ số BMI của bạn là: ${bmi.toFixed(2)} ${phanLoai}`;
+            };
+
+
+            // BÀI 2: CHANGE COLOR (ASYNC/TIMEOUT)
+            const btnColor = document.getElementById('btn-color');
+            const box = document.getElementById('color-box');
+
+            // Hàm randomColor được cung cấp trong đề bài 
+            function randomColor() {
+                return '#' + Math.floor(Math.random() * 16777215).toString(16);
+            }
+
+            btnColor.onclick = function() {
+                // Thay đổi text nút để báo hiệu đang xử lý
+                const originalText = btnColor.innerText;
+                btnColor.innerText = "Wait 1s...";
+                btnColor.disabled = true;
+
+                // Sử dụng setTimeout để tạo độ trễ 1s (Async callback)
+                setTimeout(function() {
+                    const newColor = randomColor();
+                    box.style.backgroundColor = newColor;
+                    
+                    // Reset lại nút
+                    btnColor.innerText = originalText;
+                    btnColor.disabled = false;
+                }, 1000);
+            };
+
+
+            // BÀI 3: SẮP XẾP DANH SÁCH
+            const inputName = document.getElementById('student-name');
+            const btnAdd = document.getElementById('btn-add-student');
+            const btnSort = document.getElementById('btn-sort-student');
+            const listContainer = document.getElementById('student-list');
+            
+            // Mảng chứa danh sách sinh viên
+            let students = [];
+
+            // Hàm render danh sách ra màn hình
+            function renderList() {
+                listContainer.innerHTML = ''; // Xóa danh sách cũ
+                students.forEach(name => {
+                    let li = document.createElement('li');
+                    li.innerText = name;
+                    listContainer.appendChild(li);
+                });
+            }
+
+            // Sự kiện Thêm
+            btnAdd.onclick = function() {
+                const name = inputName.value.trim();
+                if (name) {
+                    students.push(name);
+                    inputName.value = ''; // Xóa ô input
+                    renderList();
+                }
+            };
+
+            // Sự kiện Sắp xếp
+            btnSort.onclick = function() {
+                // Sử dụng hàm sort() của mảng
+                students.sort();
+                renderList();
+            };
+
+
+            // BÀI 4: BÀI TẬP THÊM (FETCH API)
+            const btnFetch = document.getElementById('btn-fetch');
+            const resFetch = document.getElementById('result-fetch');
+
+            btnFetch.onclick = function() {
+                resFetch.innerText = "Đang tải dữ liệu...";
+                
+                // Giả lập gọi API (sử dụng Promise/setTimeout)
+                new Promise((resolve, reject) => {
+                    setTimeout(() => {
+                        resolve("Hé lô Cô Vân !!!");
+                    }, 1500);
+                })
+                .then(data => {
+                    resFetch.innerText = data;
+                    resFetch.style.color = "green";
+                })
+                .catch(err => {
+                    resFetch.innerText = "Lỗi kết nối.";
+                });
+            };
+
+        });
+    </script>
+</body>
+</html>

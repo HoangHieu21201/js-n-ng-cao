@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Lab 3</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: #e8f5e9; /* nền xanh nhạt */
+        }
+
+        h1 {
+            text-align: center;
+            color: #1b5e20;
+            margin-bottom: 40px;
+        }
+
+        /* Box bài tập */
+        .exercise { 
+            background-color: #ffffff;
+            border: 1px solid #c8e6c9; 
+            padding: 20px; 
+            margin: 20px auto;
+            border-radius: 14px;
+            max-width: 850px;
+            box-shadow: 0px 4px 15px rgba(0,0,0,0.12);
+        }
+
+        h2 { 
+            border-left: 6px solid #2e7d32;
+            padding-left: 12px;
+            color: #1b5e20;
+            margin-bottom: 18px;
+            font-size: 23px;
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group label {
+            display: inline-block;
+            width: 170px;
+            font-weight: bold;
+            color: #1b5e20;
+        }
+
+        input[type=text],
+        input[type=number] {
+            padding: 9px;
+            width: 260px;
+            border-radius: 6px;
+            border: 1px solid #777;
+            outline: none;
+            background: #fafafa;
+            transition: 0.2s;
+        }
+
+        input[type=text]:focus,
+        input[type=number]:focus {
+            border-color: #2e7d32;
+            background: #fff;
+        }
+
+        /* Button */
+        button,
+        input[type="button"] {
+            padding: 11px 18px;
+            background: #2e7d32;
+            color: #fff;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: 0.25s;
+            font-size: 14px;
+        }
+
+        button:hover,
+        input[type="button"]:hover {
+            background-color: #1b5e20;
+        }
+
+        .output-profile {
+            border: 1px dashed #2e7d32;
+            padding: 12px 16px;
+            background: #f1f8e9;
+            border-radius: 10px;
+            min-width: 220px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Lab 3 - JavaScript Nâng Cao - PK04033</h1>
+
+    <!-- Bài 1 -->
+    <div class="exercise" id="bai1">
+        <h2>Bài 1: Object Literals</h2>
+        <p>Kết quả tạo đối tượng và gọi phương thức được hiển thị trong <strong>Console (F12)</strong>.</p>
+    </div>
+
+    <!-- Bài 2 -->
+    <div class="exercise" id="bai2">
+        <h2>Bài 2: Truy xuất và cập nhật đối tượng</h2>
+        
+        <div class="form-group">
+            <label>Subject Name</label>
+            <input type="text" id="subject-name-b2">
+        </div>
+        <div class="form-group">
+            <label>Point</label>
+            <input type="number" id="subject-point-b2">
+        </div>
+        <input type="button" id="btn-add-subject" value="Add">
+
+        <hr style="margin: 20px 0;">
+
+        <p id="student_name"></p>
+        <p id="student_age"></p>
+        <p id="student_address"></p>
+        <p>Subjects:</p>
+        <ul id="subjects"></ul>
+    </div>
+
+    <!-- Bài 3 -->
+    <div class="exercise" id="bai3">
+        <h2>Bài 3: Object Constructor & Prototype</h2>
+        <p>Kết quả tạo constructor, đối tượng kế thừa và gọi phương thức được hiển thị trong <strong>Console (F12)</strong>.</p>
+    </div>
+
+    <!-- Bài 4 -->
+    <div class="exercise" id="bai4">
+        <h2>Bài 4: Prototype ( __proto__ )</h2>
+        
+        <div style="display: flex; gap: 40px;">
+            <div>
+                <h4>1st Person</h4>
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" id="p1-name">
+                </div>
+                <div class="form-group">
+                    <label>Age</label>
+                    <input type="number" id="p1-age">
+                </div>
+                <div class="form-group">
+                    <label>Address</label>
+                    <input type="text" id="p1-address">
+                </div>
+            </div>
+
+            <div>
+                <h4>2nd Person</h4>
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" id="p2-name">
+                </div>
+                <div class="form-group">
+                    <label>Age</label>
+                    <input type="number" id="p2-age">
+                </div>
+                <div class="form-group">
+                    <label>Address</label>
+                    <input type="text" id="p2-address">
+                </div>
+            </div>
+        </div>
+        
+        <button id="btn-show-profile">Show profile</button>
+
+        <div style="display: flex; gap: 40px; margin-top: 20px;">
+            <div id="profile-1-output" class="output-profile"></div>
+            <div id="profile-2-output" class="output-profile"></div>
+        </div>
+    </div>
+
+
+<script>
+// DOM load
+document.addEventListener("DOMContentLoaded", function() {
+
+    // Bài 1
+    (function() {
+        console.log("--- BÀI 1: Object Literals ---");
+
+        const sinhvien = {
+            id: "SV001",
+            fullname: "Ngô Bá Khá",
+            email: "khabanh@fpt.edu.vn",
+            avatar: "avatar.png",
+            address: "Bắc Ninh",
+            study_major: "Thiết kế Web",
+            avgScore: 0,
+
+            getAvgScore: function() {
+                return this.avgScore;
+            },
+
+            setAvgScore: function(point) {
+                this.avgScore = point;
+            },
+
+            changeAddress: function(newAddress) {
+                this.address = newAddress;
+                console.log(`[Bài 1] Địa chỉ đổi thành: ${this.address}`);
+            }
+        };
+
+        console.log("Đối tượng ban đầu:", sinhvien);
+        sinhvien.setAvgScore(8.5);
+        sinhvien.changeAddress("Hồ Chí Minh");
+        console.log("Sau khi cập nhật:", sinhvien);
+    })();
+
+
+    // Bài 2
+    (function() {
+        var student = {
+            name: 'Trịnh Trần Phương Tuấn',
+            age: 28,
+            address: 'Bến Tre',
+            subjects: [
+                { name: 'Javascript', point: 8 }
+            ]
+        };
+
+        const nameEl = document.getElementById('student_name');
+        const ageEl = document.getElementById('student_age');
+        const addressEl = document.getElementById('student_address');
+        const subjectListEl = document.getElementById('subjects');
+        const nameInput = document.getElementById('subject-name-b2');
+        const pointInput = document.getElementById('subject-point-b2');
+        const addBtn = document.getElementById('btn-add-subject');
+
+        function render() {
+            nameEl.innerText = `Tên: ${student.name}`;
+            ageEl.innerText = `Tuổi: ${student.age}`;
+            addressEl.innerText = `Địa chỉ: ${student.address}`;
+
+            subjectListEl.innerHTML = "";
+            student.subjects.forEach(function(subject) {
+                const li = document.createElement('li');
+                li.innerText = `${subject.name} - ${subject.point}`;
+                subjectListEl.appendChild(li);
+            });
+        }
+
+        addBtn.onclick = function() {
+            const newName = nameInput.value;
+            const newPoint = parseFloat(pointInput.value);
+
+            if (newName && !isNaN(newPoint)) {
+                student.subjects.push({ name: newName, point: newPoint });
+                render();
+                nameInput.value = "";
+                pointInput.value = "";
+            } else {
+                alert("Nhập đầy đủ thông tin!");
+            }
+        };
+
+        render();
+    })();
+
+
+    // Bài 3
+    (function() {
+        console.log("--- BÀI 3: Object Constructor & Prototype ---");
+
+        function Student(name, age, address, phone, birthday) {
+            this.Name = name;
+            this.Age = age;
+            this.Address = address;
+            this.Phone = phone;
+            this.Birthday = birthday;
+            this.Subjects = [];
+        }
+
+        Student.prototype.changeAddress = function(newAddress) {
+            this.Address = newAddress;
+        };
+
+        Student.prototype.getAvgScore = function() {
+            if (this.Subjects.length === 0) return 0;
+            let total = 0;
+            this.Subjects.forEach(sub => total += sub.Point);
+            return (total / this.Subjects.length).toFixed(2);
+        };
+
+        Student.prototype.addSubject = function(name, teacher, point, year) {
+            this.Subjects.push({ Name: name, Teacher: teacher, Point: point, Year: year });
+        };
+
+        function StudentPoly(name, age, address, phone, birthday, major) {
+            Student.call(this, name, age, address, phone, birthday);
+            this.study_major = major;
+        }
+
+        StudentPoly.prototype = Object.create(Student.prototype);
+        StudentPoly.prototype.constructor = StudentPoly;
+
+        let polySV = new StudentPoly("Bùi Tấn Tuấn", 20, "Đăk Lăk", "0987", "2005", "CNTT");
+        polySV.addSubject("Lập Trình Web", "Cô Vân", 9, 2025);
+        console.log(polySV);
+
+    })();
+
+
+    // Bài 4
+    (function() {
+        const Person = {
+            Name: "Default",
+            Age: 0,
+            Address: "Default",
+            showProfile: function(outputId) {
+                const box = document.getElementById(outputId);
+                box.innerHTML = `
+                    <h4>Profile</h4>
+                    <p><strong>Tên:</strong> ${this.Name}</p>
+                    <p><strong>Tuổi:</strong> ${this.Age}</p>
+                    <p><strong>Địa chỉ:</strong> ${this.Address}</p>
+                `;
+            }
+        };
+
+        let FirstPerson = {};
+        let SecondPerson = {};
+
+        FirstPerson.__proto__ = Person;
+        SecondPerson.__proto__ = Person;
+
+        const btn = document.getElementById("btn-show-profile");
+
+        btn.onclick = function() {
+            const p1n = document.getElementById("p1-name").value;
+            const p1a = document.getElementById("p1-age").value;
+            const p1ad = document.getElementById("p1-address").value;
+
+            const p2n = document.getElementById("p2-name").value;
+            const p2a = document.getElementById("p2-age").value;
+            const p2ad = document.getElementById("p2-address").value;
+
+            if (!p1n || !p1a || !p1ad || !p2n || !p2a || !p2ad) {
+                alert("Điền đầy đủ thông tin!");
+                return;
+            }
+
+            FirstPerson.Name = p1n;
+            FirstPerson.Age = p1a;
+            FirstPerson.Address = p1ad;
+
+            SecondPerson.Name = p2n;
+            SecondPerson.Age = p2a;
+            SecondPerson.Address = p2ad;
+
+            FirstPerson.showProfile("profile-1-output");
+            SecondPerson.showProfile("profile-2-output");
+        };
+    })();
+
+});
+</script>
+
+</body>
+</html>

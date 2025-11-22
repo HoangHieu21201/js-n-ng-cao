@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab 1 - JavaScript Nâng Cao</title>
+</head>
+<style type="text/css" media="screen">
+    /* Cấu hình chung */
+    body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+    }
+
+    hr {
+        margin: 30px 0;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select,
+    button {
+        padding: 5px;
+        margin: 5px 0;
+    }
+
+    /* bài 1 */
+    #target {
+        width: 100%;
+        height: 60px;
+        background: #33691E;
+        /* Thêm transition để hiệu ứng mượt hơn */
+        transition: background 0.3s ease;
+    }
+
+    /* bài 2 */
+    #color {
+        display: block;
+        height: 30px;
+        line-height: 30px;
+        margin-bottom: 20px;
+        width: 200px;
+    }
+
+    /* Bài 3 & 4: CSS cho .user_item */
+    /* [cite: 93, 147] */
+    .user_item {
+        color: green;
+        /* [cite: 94, 150] */
+        text-decoration: underline;
+        /* [cite: 95, 151] */
+        cursor: pointer;
+        /* [cite: 96, 151] */
+        margin-bottom: 5px;
+    }
+
+    /* Bài 4: CSS cho form */
+    .form div {
+        margin-bottom: 10px;
+    }
+
+    .form label {
+        display: inline-block;
+        width: 60px;
+    }
+
+    /* Bài 5 & 6: CSS cho output */
+    .date-output h3 {
+        font-family: monospace;
+        color: #0056b3;
+    }
+</style>
+
+<body>
+    <h1>Bài 1: Xử lý sự kiện DOM</h1>
+    <div id="target">
+    </div>
+
+    <hr>
+    <h1>Bài 2: Luyện tập thuộc tính DOM </h1>
+    <input type="text" id="txtInput" value="33691E">
+    <h3>Input text</h3>
+
+    <hr>
+    <h1>Bài 3: Render danh sách từ Array </h1>
+    <ul id="target-bai3">
+    </ul>
+
+    <hr>
+    <h1>Bài 4: Thêm phần tử vào mảng </h1>
+    <div class="form">
+        <div>
+            <label>ID</label> <input type="number" id="addUserID" value="" placeholder="">
+        </div>
+        <div>
+            <label>Name</label> <input type="text" id="addUserText" value="" placeholder="">
+        </div>
+        <div>
+            <label>Gender</label> <select id="addUserGender">
+                <option value="1">male</option>
+                <option value="2">female</option>
+            </select>
+        </div>
+        <div>
+            <button type="button" id="addAction">Add</button>
+        </div>
+    </div>
+    <ul id="target-bai4">
+    </ul>
+
+    <hr>
+    <h1>Bài 5: Xử lý thời gian (Date Object) </h1>
+    <div>
+        <label>Date</label>
+        <input type="number" id="date5" value="1" min="1" max="31">
+    </div>
+    <div>
+        <label>Month</label>
+        <input type="number" id="month5" value="11" min="1" max="12">
+    </div>
+    <div>
+        <label>Year</label>
+        <input type="number" id="year5" value="2019">
+    </div>
+    <button id="convert5">Convert</button>
+    <div class="date-output">
+        <h3 id="output5-1">(YYYY-MM-DD)</h3>
+        <h3 id="output5-2">(DD/MM/YYYY)</h3>
+        <h3 id="output5-3">(DD.MM.YYYY)</h3>
+        <h3 id="output5-4">(DD, MMM YYYY)</h3>
+        <h3 id="output5-5">(DD, MMMM YYYY)</h3>
+    </div>
+
+    <hr>
+    <h1>Bài 6: Xử lý thời gian (Moment.js)</h1>
+    <div>
+        <label>Date</label>
+        <input type="number" id="date6" value="1" min="1" max="31">
+    </div>
+    <div>
+        <label>Month</label>
+        <input type="number" id="month6" value="11" min="1" max="12">
+    </div>
+    <div>
+        <label>Year</label>
+        <input type="number" id="year6" value="2019">
+    </div>
+    <button id="convert6">Convert</button>
+    <div class="date-output">
+        <h3 id="output6">(Thứ trong tuần)</h3>
+    </div>
+
+    <hr>
+    <h1>Bài 7: Bài tập thêm </h1>
+    <p>Bài này cần Giảng viên cung cấp đề bài.</p>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+
+    <script>
+        // --- Bài 1 ---
+        var target = document.querySelector("#target");
+
+        target.onmouseover = function () {
+            target.style.background = "#BF360C";
+        }
+
+        target.onmouseout = function () {
+            target.style.background = "#33691E";
+        }
+
+        // --- Bài 2 ---
+        var h3Text = document.querySelector("h3");
+        var txtInput = document.querySelector("#txtInput");
+
+        txtInput.onkeyup = function () {
+            h3Text.innerText = txtInput.value;
+        }
+
+        // --- Bài 3 ---
+        var users_bai3 = [
+            { id: 1, name: "James Smith", gender: 1 },
+            { id: 2, name: "Isla Brown", gender: 2 },
+            { id: 3, name: "Amelia Davies", gender: 2 },
+            { id: 4, name: "Jacob Evans", gender: 1 }
+        ];
+        var targetBai3 = document.querySelector("#target-bai3");
+
+        function renderBai3() {
+            targetBai3.innerHTML = "";
+
+            users_bai3.forEach(function (user) {
+                var li = document.createElement("li");
+
+                li.className = "user_item";
+
+                var genderText = (user.gender === 1) ? "male" : "female";
+
+                li.innerText = `${user.id} - ${user.name} - ${genderText}`;
+
+                targetBai3.appendChild(li);
+            });
+        }
+        renderBai3();
+
+        // --- Bài 4 ---
+        var users_bai4 = [
+            { id: 1, name: "James Smith", gender: 1 },
+            { id: 2, name: "Isla Brown", gender: 2 },
+            { id: 3, name: "Amelia Davies", gender: 2 },
+            { id: 4, name: "Jacob Evans", gender: 1 }
+        ];
+
+        var targetBai4 = document.querySelector("#target-bai4");
+        var addUserID = document.querySelector("#addUserID");
+        var addUserText = document.querySelector("#addUserText");
+        var addUserGender = document.querySelector("#addUserGender");
+        var addAction = document.querySelector("#addAction");
+
+        function renderBai4() {
+            targetBai4.innerHTML = "";
+            users_bai4.forEach(function (user) {
+                var li = document.createElement("li");
+                li.className = "user_item";
+                var genderText = (user.gender === 1) ? "male" : "female";
+                li.innerText = `${user.id} - ${user.name} - ${genderText}`;
+                targetBai4.appendChild(li);
+            });
+        }
+
+        addAction.onclick = function () {
+            var id = parseInt(addUserID.value);
+            var name = addUserText.value;
+            var gender = parseInt(addUserGender.value);
+
+            var newUser = {
+                id: id,
+                name: name,
+                gender: gender
+            };
+
+            users_bai4.push(newUser);
+
+            renderBai4();
+
+            addUserID.value = "";
+            addUserText.value = "";
+        }
+
+        renderBai4();
+
+        // --- Bài 5 ---
+        function pad(num) {
+            return num < 10 ? '0' + num : num;
+        }
+
+        var btnConvert5 = document.querySelector("#convert5");
+        btnConvert5.onclick = function () {
+            var day = parseInt(document.querySelector("#date5").value);
+            var month = parseInt(document.querySelector("#month5").value);
+            var year = parseInt(document.querySelector("#year5").value);
+
+            var dateObj = new Date(year, month - 1, day);
+
+            var dd = pad(dateObj.getDate());
+            var mm = pad(dateObj.getMonth() + 1);
+            var yyyy = dateObj.getFullYear();
+
+            var monthShort = dateObj.toLocaleString('en-US', { month: 'short' });
+            var monthLong = dateObj.toLocaleString('en-US', { month: 'long' });
+
+            document.querySelector("#output5-1").innerText = `${yyyy}-${mm}-${dd}`;
+            document.querySelector("#output5-2").innerText = `${dd}/${mm}/${yyyy}`;
+            document.querySelector("#output5-3").innerText = `${dd}.${mm}/${yyyy}`;
+            document.querySelector("#output5-4").innerText = `${dd}, ${monthShort} ${yyyy}`;
+            document.querySelector("#output5-5").innerText = `${dd}, ${monthLong} ${yyyy}`;
+        }
+
+        // --- Bài 6 ---
+        var btnConvert6 = document.querySelector("#convert6");
+        btnConvert6.onclick = function () {
+            var day = pad(document.querySelector("#date6").value);
+            var month = pad(document.querySelector("#month6").value);
+            var year = document.querySelector("#year6").value;
+
+            var dateString = `${year}/${month}/${day}`;
+
+            var dt = moment(dateString, "YYYY/MM/DD");
+
+            document.querySelector("#output6").innerText = dt.format("dddd");
+        }
+
+    </script>
+</body>
+
+</html>
+</body>
+
+</html>
