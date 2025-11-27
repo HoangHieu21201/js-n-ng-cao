@@ -1,99 +1,193 @@
 <script setup>
 import { ref, computed, onMounted, reactive } from 'vue';
+import Swal from 'sweetalert2';
+// Import thư viện socket.io-client
+import { io } from "socket.io-client";
 
-// --- STATE (Dữ liệu) ---
+const API_URL = 'http://localhost:8080';
+
 const apiResponse = ref(null);
 const isLoading = ref(false);
 const isSubmitting = ref(false);
 const currentPage = ref(1);
 
-// Modal State
 const isModalVisible = ref(false);
-const modalMode = ref('view'); // 'view' | 'add' | 'edit'
-const fileInputRef = ref(null); // Tham chiếu đến thẻ input file để reset
-const previewImage = ref(''); // Dùng để hiển thị ảnh xem trước khi chọn file
+const modalMode = ref('view');
+const fileInputRef = ref(null);
+
+// --- STATE MỚI CHO QUẢN LÝ ẢNH LINH HOẠT ---
+// galleryItems sẽ chứa object: { type: 'server'|'local', url: string, file?: File, name?: string }
+const galleryItems = ref([]);
+const activeImage = ref('');
 
 const formData = reactive({
-  id: null,
-  name: '',
-  price: 0,
-  description: '',
-  image: '', // Lưu đường dẫn ảnh hoặc Base64 string
-  status: 1
+  id: null, name: '', price: 0, description: '', image: '[]', status: 1
 });
 
-// --- COMPUTED (Tính toán) ---
 const products = computed(() => apiResponse.value?.data || []);
-
 const pageInfo = computed(() => {
-  if (!apiResponse.value) return { page: 1, limit: 12, hasMore: false };
+  if (!apiResponse.value) return { page: 1, limit: 12, total: 0, hasMore: false };
+  let totalRecords = apiResponse.value.total || apiResponse.value.totalItems || apiResponse.value.count || 0;
+  if (totalRecords === 0 && apiResponse.value.data?.length > 0) totalRecords = 50;
+
   return {
-    page: apiResponse.value.page,
-    limit: apiResponse.value.limit,
-    hasMore: apiResponse.value.data.length === apiResponse.value.limit,
+    page: apiResponse.value.page || 1,
+    limit: apiResponse.value.limit || 12,
+    total: totalRecords,
+    hasMore: apiResponse.value.data?.length === (apiResponse.value.limit || 12),
   };
 });
 
-// --- METHODS (Hàm xử lý) ---
+const totalPages = computed(() => {
+  if (!pageInfo.value.total || !pageInfo.value.limit) return 0;
+  return Math.ceil(pageInfo.value.total / pageInfo.value.limit);
+});
 
-// 1. Lấy dữ liệu (Read)
-const fetchData = async (page) => {
-  if (isLoading.value) return;
-  isLoading.value = true;
+const visiblePages = computed(() => {
+  const total = totalPages.value;
+  const current = pageInfo.value.page;
+  const delta = 2;
+  if (total <= 1) return [1];
+  const range = [], pages = [];
+  for (let i = 1; i <= total; i++) {
+    if (i === 1 || i === total || (i >= current - delta && i <= current + delta)) range.push(i);
+  }
+  let l;
+  for (let i of range) {
+    if (l) {
+      if (i - l === 2) pages.push(l + 1);
+      else if (i - l !== 1) pages.push('...');
+    }
+    pages.push(i);
+    l = i;
+  }
+  return pages;
+});
+
+const formatPrice = (price) => typeof price === "number" ? new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(price) : "N/A";
+const placeholderImage = (name = "Product") => `https://placehold.co/600x400/e0e0e0/555555?text=${encodeURI(name)}`;
+
+// --- HÀM XỬ LÝ ẢNH ---
+const parseImages = (imageField) => {
+  if (!imageField) return [];
   try {
-    // Mock API call (giả lập)
-    const res = await fetch(`/api/home?page=${page}`);
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    const parsed = JSON.parse(imageField);
+    return Array.isArray(parsed) ? parsed : [imageField];
+  } catch (e) {
+    return imageField ? [imageField] : [];
+  }
+};
+
+const getImageUrl = (imageName) => {
+  if (!imageName) return placeholderImage();
+  if (imageName.startsWith('blob:') || imageName.startsWith('http')) return imageName;
+  return `${API_URL}/photo/${imageName}`;
+};
+
+const getThumbnail = (product) => {
+  const images = parseImages(product.image);
+  return images.length > 0 ? getImageUrl(images[0]) : placeholderImage(product.name);
+};
+
+const handleImageError = (event) => event.target.src = placeholderImage("Error");
+
+const fetchData = async (page) => {
+  try {
+    const res = await fetch(`${API_URL}/api/home?page=${page}`);
+    if (!res.ok) throw new Error(res.statusText);
     apiResponse.value = await res.json();
-    currentPage.value = apiResponse.value.page;
+    currentPage.value = apiResponse.value.page || page;
   } catch (error) {
-    console.error("Lỗi tải dữ liệu:", error);
+    console.error(error);
   } finally {
     isLoading.value = false;
   }
 };
 
-const prevPage = () => {
-  if (pageInfo.value.page > 1) fetchData(pageInfo.value.page - 1);
-};
-const nextPage = () => {
-  if (pageInfo.value.hasMore) fetchData(pageInfo.value.page + 1);
+const changePage = (page) => {
+  if (page === '...') return;
+  if (page >= 1 && page <= totalPages.value && page !== pageInfo.value.page) {
+    isLoading.value = true;
+    fetchData(page);
+  }
 };
 
-// 2. Xử lý File Upload (Mới)
+// --- LOGIC MỚI: Thêm ảnh vào danh sách chung ---
 const onFileChange = (event) => {
-  const file = event.target.files[0];
-  if (file) {
-    // Kiểm tra định dạng file (chỉ cho phép ảnh)
-    if (!file.type.match('image.*')) {
-      alert('Vui lòng chỉ chọn file ảnh!');
+  const files = Array.from(event.target.files);
+  if (files.length > 0) {
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
+    const invalidFile = files.find(f => !validTypes.includes(f.type) || f.size > 10 * 1024 * 1024);
+
+    if (invalidFile) {
+      Swal.fire({ icon: 'error', title: 'File không hợp lệ', text: 'Chỉ chấp nhận ảnh đúng định dạng JPEG, PNG, GIF, WEBP < 10MB.' });
+      event.target.value = null;
       return;
     }
 
-    // Sử dụng FileReader để đọc file thành Base64 (Mô phỏng upload thành công và trả về URL)
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      // e.target.result chính là chuỗi Base64 của ảnh
-      formData.image = e.target.result; 
-      previewImage.value = e.target.result;
-    };
-    reader.readAsDataURL(file);
+    // Thay vì ghi đè, ta thêm vào danh sách galleryItems
+    files.forEach(file => {
+      const url = URL.createObjectURL(file);
+      galleryItems.value.push({
+        type: 'local',
+        file: file,
+        url: url
+      });
+    });
+
+    // Active ảnh vừa thêm cuối cùng
+    if (galleryItems.value.length > 0) {
+      activeImage.value = galleryItems.value[galleryItems.value.length - 1].url;
+    }
+
+    // Reset input để người dùng có thể chọn tiếp
+    event.target.value = null;
   }
 };
 
-// 3. Xử lý Modal & Form
+// Hàm xoá từng ảnh trong Modal
+const removeGalleryItem = (index) => {
+  const item = galleryItems.value[index];
+  if (item.type === 'local') {
+    URL.revokeObjectURL(item.url); // Giải phóng bộ nhớ nếu là ảnh mới
+  }
+  galleryItems.value.splice(index, 1);
+
+  // Cập nhật lại ảnh active nếu ảnh đang xem bị xoá
+  if (galleryItems.value.length > 0) {
+    activeImage.value = galleryItems.value[0].url;
+  } else {
+    activeImage.value = '';
+  }
+};
+
 const openModal = (mode, product = null) => {
   modalMode.value = mode;
-  previewImage.value = ''; // Reset preview
+  galleryItems.value = []; // Reset danh sách ảnh
+  activeImage.value = '';
 
   if (mode === 'add') {
-    Object.assign(formData, { id: null, name: '', price: 0, description: '', image: '', status: 1 });
-    if (fileInputRef.value) fileInputRef.value.value = null; // Reset input file
+    Object.assign(formData, { id: null, name: '', price: 0, description: '', image: '[]', status: 1 });
+    if (fileInputRef.value) fileInputRef.value.value = null;
   } else if (product) {
     Object.assign(formData, { ...product });
-    previewImage.value = product.image; // Hiển thị ảnh hiện có
-  }
+    const serverImages = parseImages(product.image);
 
+    // Đưa ảnh cũ từ server vào danh sách galleryItems
+    serverImages.forEach(imgName => {
+      galleryItems.value.push({
+        type: 'server',
+        name: imgName,
+        url: getImageUrl(imgName)
+      });
+    });
+
+    if (galleryItems.value.length > 0) {
+      activeImage.value = galleryItems.value[0].url;
+    } else {
+      activeImage.value = placeholderImage(product.name);
+    }
+  }
   isModalVisible.value = true;
   document.body.style.overflow = "hidden";
 };
@@ -101,238 +195,260 @@ const openModal = (mode, product = null) => {
 const closeModal = () => {
   isModalVisible.value = false;
   document.body.style.overflow = "";
+  // Dọn dẹp memory blob
+  galleryItems.value.forEach(item => {
+    if (item.type === 'local') URL.revokeObjectURL(item.url);
+  });
 };
 
-// 4. Thêm / Sửa (Create / Update)
 const handleSubmit = async () => {
   if (isSubmitting.value) return;
-  
-  // Validate cơ bản
   if (!formData.name || formData.price < 0) {
-    alert("Vui lòng nhập tên và giá hợp lệ.");
+    Swal.fire({ icon: 'warning', title: 'Thiếu thông tin', text: 'Vui lòng nhập tên và giá hợp lệ.' });
     return;
   }
 
   isSubmitting.value = true;
-
   try {
-    const url = modalMode.value === 'add'
-      ? '/api/products'
-      : `/api/products/${formData.id}`;
+    const data = new FormData();
+    data.append('name', formData.name);
+    data.append('price', formData.price);
+    data.append('description', formData.description || '');
+    data.append('status', formData.status);
 
-    const method = modalMode.value === 'add' ? 'POST' : 'PUT';
+    // --- XỬ LÝ ẢNH LINH HOẠT ---
 
-    // Lưu ý: Ở môi trường thực tế, bạn sẽ dùng FormData để gửi file lên server upload riêng
-    // const dataToSend = new FormData();
-    // dataToSend.append('photo', fileObject);
-    // ... sau đó server trả về URL ảnh, rồi mới lưu sản phẩm.
-    
-    // Ở đây ta gửi JSON chứa ảnh Base64
-    const res = await fetch(url, {
-      method: method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData)
+    // 1. Lọc lấy danh sách tên ảnh cũ muốn giữ lại
+    const oldImagesToKeep = galleryItems.value
+      .filter(item => item.type === 'server')
+      .map(item => item.name);
+
+    // Gửi danh sách ảnh cũ dạng JSON String
+    data.append('images', JSON.stringify(oldImagesToKeep));
+
+    // 2. Lọc lấy danh sách file mới để upload
+    const newFilesToUpload = galleryItems.value
+      .filter(item => item.type === 'local')
+      .map(item => item.file);
+
+    // Append từng file mới
+    newFilesToUpload.forEach(file => {
+      data.append('images', file);
     });
 
-    if (!res.ok) throw new Error("Lỗi khi lưu sản phẩm");
+    const url = modalMode.value === 'add' ? `${API_URL}/api/products` : `${API_URL}/api/products/${formData.id}`;
+    const method = modalMode.value === 'add' ? 'POST' : 'PUT';
+
+    const res = await fetch(url, { method, body: data });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || "Lỗi khi lưu");
 
     await fetchData(currentPage.value);
-    closeModal();
-    alert(modalMode.value === 'add' ? 'Thêm thành công!' : 'Cập nhật thành công!');
 
+    closeModal();
+    Swal.fire({ icon: 'success', title: 'Thành công!', timer: 1500, showConfirmButton: false });
   } catch (error) {
-    console.error(error);
-    alert("Có lỗi xảy ra, vui lòng thử lại!");
+    Swal.fire({ icon: 'error', title: 'Thất bại', text: error.message });
   } finally {
     isSubmitting.value = false;
   }
 };
 
-// 5. Xóa (Delete)
 const handleDelete = async (product) => {
-  if (!confirm(`Bạn có chắc muốn xóa: ${product.name}?`)) return;
-
+  const result = await Swal.fire({
+    title: 'Bạn có chắc chắn?', text: `Xóa "${product.name}"?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Xóa', cancelButtonText: 'Hủy'
+  });
+  if (!result.isConfirmed) return;
+  if (isModalVisible.value) closeModal();
   try {
-    const res = await fetch(`/api/products/${product.id}`, { method: 'DELETE' });
-
-    if (!res.ok) throw new Error("Lỗi khi xóa sản phẩm");
-
+    const res = await fetch(`${API_URL}/api/products/${product.id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error("Lỗi khi xóa");
     await fetchData(currentPage.value);
-    alert('Đã xóa sản phẩm!');
-  } catch (error) {
-    console.error(error);
-    alert("Không thể xóa sản phẩm này.");
+    Swal.fire('Đã xóa!', '', 'success');
+  } catch (e) {
+    Swal.fire({ icon: 'error', title: 'Lỗi', text: 'Không thể xóa sản phẩm này.' });
   }
 };
 
-// Utilities
-const formatPrice = (price) => {
-  if (typeof price !== "number") return "N/A";
-  return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(price);
-};
+const prevPage = () => changePage(pageInfo.value.page - 1);
+const nextPage = () => changePage(pageInfo.value.page + 1);
 
-const placeholderImage = (name = "Product") => {
-  return `https://placehold.co/400x300/e0e0e0/555555?text=${encodeURI(name)}`;
-};
-
-const handleImageError = (event) => {
-  event.target.src = placeholderImage("Error");
-};
-
-// Lifecycle
 onMounted(() => {
+  isLoading.value = true;
   fetchData(currentPage.value);
+
+  const socket = io(API_URL);
+  socket.on("connect", () => {
+    console.log("🟢 Đã kết nối Socket:", socket.id);
+  });
+  socket.on("server_update", (data) => {
+    console.log("🔔 Server báo có thay đổi:", data);
+    fetchData(currentPage.value);
+    const actionMap = { 'create': 'được thêm mới', 'update': 'được cập nhật', 'delete': 'đã bị xóa' };
+    const msg = actionMap[data.action] || 'có thay đổi';
+    Swal.fire({
+      toast: true, position: 'top-end', icon: 'info',
+      title: `Dữ liệu vừa ${msg}`, showConfirmButton: false, timer: 3000
+    });
+  });
 });
 </script>
 
 <template>
   <div class="app-container">
-    <!-- Header: Tiêu đề & Nút Thêm -->
-    <div class="header-actions">
-      <h1>Quản lý kho hàng</h1>
-      <button class="btn-add" @click="openModal('add')">
-        + Thêm mới
-      </button>
+    <div class="header-section">
+      <div class="header-content">
+        <h1>Quản Lý Kho Hàng </h1>
+      </div>
+      <button class="btn btn-primary btn-lg" @click="openModal('add')"><span class="icon">+</span> Thêm sản
+        phẩm</button>
     </div>
 
-    <!-- Trạng thái Loading -->
-    <div v-if="isLoading" class="loading-spinner">
-      <div class="spinner"></div>
+    <div v-if="isLoading" class="state-container">
+      <div class="loader"></div>
       <p>Đang tải dữ liệu...</p>
     </div>
 
-    <!-- Lưới sản phẩm -->
     <div v-else-if="products.length > 0" class="product-grid">
       <div v-for="product in products" :key="product.id" class="product-card" @click="openModal('view', product)">
-        <div v-if="product.status === 0" class="status-overlay">
-          <span>Hết hàng</span>
+        <div class="card-image-container">
+          <div v-if="product.status === 0" class="card-badge badge-danger">Hết hàng</div>
+          <img :src="getThumbnail(product)" :alt="product.name" @error="handleImageError" />
+          <div v-if="parseImages(product.image).length > 1" class="multi-badge">
+            📚 {{ parseImages(product.image).length }} ảnh
+          </div>
         </div>
-
-        <img :src="product.image || placeholderImage(product.name)" :alt="product.name" class="product-image"
-          @error="handleImageError" />
-
-        <div class="product-content">
-          <h3>{{ product.name }}</h3>
-          <p>{{ product.description }}</p>
-          <span class="product-price">{{ formatPrice(product.price) }}</span>
+        <div class="card-body">
+          <h3 class="card-title">{{ product.name }}</h3>
+          <p class="card-desc">{{ product.description || 'Chưa có mô tả' }}</p>
+          <div class="card-meta"><span class="price-tag">{{ formatPrice(product.price) }}</span></div>
         </div>
-
-        <!-- Nút hành động (Sửa / Xóa) -->
-        <div class="card-actions">
-          <button class="btn-icon edit" @click.stop="openModal('edit', product)">
-            ✎
-          </button>
-          <button class="btn-icon delete" @click.stop="handleDelete(product)">
-            ×
-          </button>
+        <div class="card-footer" @click.stop>
+          <button class="btn btn-outline-primary btn-sm" @click="openModal('edit', product)">✏️ Sửa</button>
+          <button class="btn btn-outline-danger btn-sm" @click="handleDelete(product)">🗑️ Xóa</button>
         </div>
       </div>
     </div>
 
-    <!-- Trạng thái không có sản phẩm -->
-    <div v-else-if="!isLoading && products.length === 0" class="no-products">
-      <p>Không tìm thấy sản phẩm nào.</p>
+    <div v-else class="state-container no-data">
+      <p>📭 Chưa có sản phẩm nào.</p>
     </div>
 
-    <!-- Phân trang -->
-    <div v-if="!isLoading && apiResponse" class="pagination">
-      <button @click="prevPage" :disabled="pageInfo.page <= 1">
-        &laquo; Trang trước
-      </button>
-      <span>Trang {{ pageInfo.page }}</span>
-      <button @click="nextPage" :disabled="!pageInfo.hasMore">
-        Trang sau &raquo;
-      </button>
+    <div v-if="!isLoading && products.length > 0" class="pagination-container">
+      <button class="btn btn-white" @click="prevPage" :disabled="pageInfo.page <= 1">← Trước</button>
+      <div class="page-numbers">
+        <template v-for="(item, index) in visiblePages" :key="index">
+          <span v-if="item === '...'" class="dots">...</span>
+          <button v-else class="btn-page" :class="{ 'active': item === pageInfo.page }" @click="changePage(item)">{{
+            item }}</button>
+        </template>
+      </div>
+      <button class="btn btn-white" @click="nextPage" :disabled="pageInfo.page >= totalPages">Sau →</button>
     </div>
   </div>
 
-  <!-- Modal Đa Năng (Xem / Thêm / Sửa) -->
-  <div v-if="isModalVisible" class="modal-overlay" @click.self="closeModal">
-    <div class="modal-content">
-      <button class="modal-close" @click="closeModal">&times;</button>
+  <!-- MODAL -->
+  <div v-if="isModalVisible" class="modal-backdrop" @click.self="closeModal">
+    <div class="modal-panel">
+      <button class="modal-close-btn" @click="closeModal">&times;</button>
+      <div class="modal-header">
+        <h2>{{ modalMode === 'view' ? 'Chi Tiết' : modalMode === 'add' ? 'Thêm Mới' : 'Cập Nhật' }}</h2>
+      </div>
+      <div class="modal-body">
+        <form v-if="modalMode !== 'view'" @submit.prevent="handleSubmit" class="custom-form">
+          <div class="form-grid">
+            <div class="form-col-left">
+              <label class="form-label">Hình ảnh ({{ galleryItems.length }} ảnh)</label>
 
-      <h2>
-        {{ modalMode === 'view' ? 'Chi tiết sản phẩm' :
-          modalMode === 'add' ? 'Thêm sản phẩm mới' : 'Cập nhật sản phẩm' }}
-      </h2>
-      <hr />
+              <!-- Khung xem ảnh lớn -->
+              <div class="main-preview-box">
+                <img v-if="activeImage" :src="activeImage" class="main-img" @error="handleImageError" />
+                <div v-else class="no-img-placeholder">Chưa có ảnh</div>
+              </div>
 
-      <!-- FORM NHẬP LIỆU -->
-      <form v-if="modalMode !== 'view'" @submit.prevent="handleSubmit" class="product-form">
-        <div class="form-group">
-          <label>Tên sản phẩm <span class="required">*</span></label>
-          <input v-model="formData.name" type="text" required placeholder="Nhập tên..." />
-        </div>
+              <!-- Danh sách Thumbnail linh hoạt -->
+              <div class="thumbnail-strip" v-if="galleryItems.length > 0">
+                <!-- Duyệt qua mảng galleryItems chung -->
+                <div v-for="(item, idx) in galleryItems" :key="idx" class="thumb-item"
+                  :class="{ 'active': activeImage === item.url }" @click="activeImage = item.url">
+                  <img :src="item.url" @error="handleImageError" />
 
-        <div class="form-group">
-          <label>Giá (VNĐ) <span class="required">*</span></label>
-          <input v-model.number="formData.price" type="number" required placeholder="0" min="0" />
-        </div>
+                  <!-- Nút xoá cho từng ảnh -->
+                  <div class="remove-btn" @click.stop="removeGalleryItem(idx)" title="Xoá ảnh này">
+                    &times;
+                  </div>
+                </div>
+              </div>
 
-        <!-- INPUT FILE ẢNH MỚI -->
-        <div class="form-group">
-          <label>Hình ảnh</label>
-          <div class="image-upload-container">
-            <!-- Input chọn file -->
-            <input 
-              type="file" 
-              ref="fileInputRef"
-              accept="image/png, image/jpeg, image/jpg" 
-              @change="onFileChange" 
-              class="file-input"
-            />
-            
-            <!-- Hiển thị preview nếu có ảnh -->
-            <div v-if="previewImage" class="image-preview-box">
-              <img :src="previewImage" alt="Preview" class="preview-img" />
-              <p class="preview-label">Ảnh đã chọn</p>
+              <div class="upload-control">
+                <input type="file" ref="fileInputRef" multiple accept="image/*" @change="onFileChange"
+                  class="hidden-input" />
+                <button type="button" class="btn btn-white btn-full" @click="$refs.fileInputRef.click()">
+                  📷 Thêm ảnh mới
+                </button>
+                <p class="hint-text" v-if="modalMode === 'edit'">* Bạn có thể thêm/xoá ảnh tuỳ ý.</p>
+              </div>
             </div>
-            <div v-else class="no-image-placeholder">
-              Chưa chọn ảnh
+
+            <div class="form-col-right">
+              <div class="form-group">
+                <label>Tên sản phẩm <span class="req">*</span></label>
+                <input v-model="formData.name" type="text" class="form-control" required />
+              </div>
+              <div class="form-group">
+                <label>Giá bán <span class="req">*</span></label>
+                <input v-model.number="formData.price" type="number" class="form-control" required />
+              </div>
+              <div class="form-group">
+                <label>Trạng thái</label>
+                <select v-model="formData.status" class="form-control">
+                  <option :value="1">Đang kinh doanh</option>
+                  <option :value="0">Ngừng kinh doanh</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Mô tả</label>
+                <textarea v-model="formData.description" rows="4" class="form-control"></textarea>
+              </div>
             </div>
           </div>
-        </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-white" @click="closeModal">Hủy</button>
+            <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
+              {{ isSubmitting ? 'Đang lưu...' : 'Lưu thông tin' }}
+            </button>
+          </div>
+        </form>
 
-        <div class="form-group">
-          <label>Mô tả</label>
-          <textarea v-model="formData.description" rows="3" placeholder="Mô tả chi tiết..."></textarea>
-        </div>
-
-        <div class="form-group">
-          <label>Trạng thái</label>
-          <select v-model="formData.status">
-            <option :value="1">Đang bán</option>
-            <option :value="0">Hết hàng</option>
-          </select>
-        </div>
-
-        <div class="form-actions">
-          <button type="button" @click="closeModal" class="btn-cancel">Hủy</button>
-          <button type="submit" class="btn-submit" :disabled="isSubmitting">
-            {{ isSubmitting ? 'Đang xử lý...' : 'Lưu dữ liệu' }}
-          </button>
-        </div>
-      </form>
-
-      <!-- CHẾ ĐỘ XEM CHI TIẾT -->
-      <div v-else class="view-mode">
-        <div class="view-image-wrapper">
-            <img :src="formData.image || placeholderImage(formData.name)" class="modal-product-image"
-            @error="handleImageError" />
-        </div>
-        <h3 class="modal-product-name">{{ formData.name }}</h3>
-        <p class="modal-product-price">{{ formatPrice(formData.price) }}</p>
-        
-        <div class="info-row">
-            <strong>Mô tả:</strong>
-            <p>{{ formData.description || 'Chưa có mô tả' }}</p>
-        </div>
-
-        <div class="info-row">
-            <strong>Trạng thái:</strong>
-            <span :class="['status-badge', formData.status === 1 ? 'status-active' : 'status-inactive']">
-            {{ formData.status === 1 ? "Đang bán" : "Hết hàng" }}
-            </span>
+        <div v-else class="view-layout">
+          <div class="view-gallery">
+            <div class="view-main-image">
+              <img :src="activeImage" class="detail-image" @error="handleImageError" />
+            </div>
+            <div class="view-thumbnails">
+              <div v-for="(imgName, idx) in parseImages(formData.image)" :key="idx" class="view-thumb"
+                :class="{ 'active': activeImage === getImageUrl(imgName) }" @click="activeImage = getImageUrl(imgName)">
+                <img :src="getImageUrl(imgName)" @error="handleImageError" />
+              </div>
+            </div>
+          </div>
+          <div class="view-info">
+            <div class="view-header">
+              <h2 class="detail-name">{{ formData.name }}</h2>
+              <span class="status-pill" :class="formData.status === 1 ? 'status-success' : 'status-error'">
+                {{ formData.status === 1 ? "Đang bán" : "Hết hàng" }}
+              </span>
+            </div>
+            <div class="detail-price">{{ formatPrice(formData.price) }}</div>
+            <div class="detail-section">
+              <h4>Mô tả:</h4>
+              <p class="detail-desc">{{ formData.description || 'Không có mô tả.' }}</p>
+            </div>
+            <div class="view-actions">
+              <button class="btn btn-outline-primary" @click="modalMode = 'edit'">✏️ Sửa thông tin</button>
+              <button class="btn btn-outline-danger" @click="handleDelete(formData)">🗑️ Xóa sản phẩm</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -340,447 +456,503 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* Giữ lại các style cũ và thêm style mới cho File Upload */
+/* Style gốc giữ nguyên, chỉ thêm phần remove-btn cho nút xoá ảnh */
+* {
+  box-sizing: border-box;
+}
 
 .app-container {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  max-width: 1200px;
+  font-family: 'Inter', sans-serif;
+  max-width: 1280px;
   margin: 0 auto;
   padding: 2rem;
-  color: #333;
-  background-color: #f8f9fa;
+  background-color: #f3f4f6;
   min-height: 100vh;
+  color: #1f2937;
 }
 
-.header-actions {
+.header-section {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
+  align-items: flex-end;
+  margin-bottom: 2.5rem;
+  border-bottom: 1px solid #e5e7eb;
   padding-bottom: 1rem;
-  border-bottom: 2px solid #e9ecef;
 }
 
-h1 {
-  color: #2c3e50;
+.header-content h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  background: linear-gradient(to right, #029d76, #77fc6d);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
   margin: 0;
-  font-size: 1.8rem;
 }
 
-/* Buttons */
-.btn-add {
-  background-color: #10b981;
-  color: white;
-  border: none;
-  padding: 0.6rem 1.2rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: background 0.2s;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.btn-add:hover {
-  background-color: #059669;
-}
-
-.btn-icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  border: none;
-  cursor: pointer;
-  display: flex;
+.btn {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
-  margin-left: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
   transition: all 0.2s;
 }
 
-.btn-icon:hover {
-  transform: scale(1.1);
+.btn-primary {
+  background-color: #029d76;
+  color: white;
 }
 
-.btn-icon.edit {
-  background-color: #e0f2fe;
-  color: #0284c7;
+.btn-primary:hover {
+  background-color: #1d4ed8;
 }
 
-.btn-icon.delete {
-  background-color: #fee2e2;
+.btn-white {
+  background: white;
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+.btn-white:hover {
+  background: #f9fafb;
+}
+
+.btn-full {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.btn-outline-primary {
+  background: #eff6ff;
+  color: #029d76;
+  border: 1px solid #bfdbfe;
+}
+
+.btn-outline-danger {
+  background: #fef2f2;
   color: #dc2626;
+  border: 1px solid #fecaca;
 }
 
-/* Grid & Card */
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 2rem;
 }
 
 .product-card {
-  position: relative;
-  background-color: #ffffff;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  transition: transform 0.2s, box-shadow 0.2s;
+  background: white;
+  border-radius: 1rem;
   overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f3f4f6;
   cursor: pointer;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  transition: transform 0.3s;
 }
 
 .product-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-5px);
 }
 
-.card-actions {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: flex;
-  opacity: 0;
-  transition: opacity 0.2s;
-  z-index: 20;
-  background: rgba(255,255,255,0.8);
-  padding: 4px;
-  border-radius: 20px;
+.card-image-container {
+  height: 220px;
+  position: relative;
+  background: #f9fafb;
 }
 
-.product-card:hover .card-actions {
-  opacity: 1;
-}
-
-.product-image {
+.card-image-container img {
   width: 100%;
-  height: 180px;
+  height: 100%;
   object-fit: cover;
-  border-bottom: 1px solid #f0f0f0;
 }
 
-.product-content {
-  padding: 1.2rem;
-  display: flex;
-  flex-direction: column;
+.multi-badge {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+
+.card-body {
+  padding: 1.25rem;
   flex-grow: 1;
 }
 
-.product-content h3 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.1rem;
-  color: #333;
-  font-weight: 600;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.product-content p {
-  font-size: 0.9rem;
-  color: #666;
-  margin-bottom: 0.8rem;
+.card-title {
+  font-weight: 700;
+  margin-bottom: 0.5rem;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  flex-grow: 1;
-  line-height: 1.4;
 }
 
-.product-price {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #dc2626;
-  text-align: left;
+.price-tag {
+  color: #029d76;
+  font-weight: 800;
+  font-size: 1.2rem;
 }
 
-/* Status & Overlays */
-.status-overlay {
+.card-footer {
+  padding: 0.75rem;
+  background: #f9fafb;
+  border-top: 1px solid #eee;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.card-footer button {
+  flex: 1;
+}
+
+.card-badge {
   position: absolute;
-  inset: 0;
-  background-color: rgba(255, 255, 255, 0.7);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 10;
-  backdrop-filter: blur(1px);
-  pointer-events: none;
+  top: 1rem;
+  left: 1rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: #fee2e2;
+  color: #991b1b;
 }
 
-.status-overlay span {
-  font-size: 1rem;
-  font-weight: bold;
-  color: #555;
-  background: white;
-  padding: 0.4rem 1rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-/* Pagination */
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
-  margin-top: 2rem;
-}
-
-.pagination button {
-  padding: 0.5rem 1rem;
-  background: white;
-  border: 1px solid #d1d5db;
-  color: #374151;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.pagination button:hover:not(:disabled) {
-  border-color: #10b981;
-  color: #10b981;
-}
-
-.pagination button:disabled {
-  background: #f3f4f6;
-  color: #9ca3af;
-  cursor: not-allowed;
-}
-
-/* Loading & Empty */
-.loading-spinner,
-.no-products {
-  text-align: center;
-  padding: 3rem 0;
-  color: #9ca3af;
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #e5e7eb;
-  border-top: 4px solid #10b981;
-  border-radius: 50%;
-  margin: 0 auto 1rem;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  100% { transform: rotate(360deg); }
-}
-
-/* Modal & Form Styles */
-.modal-overlay {
+.modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
-  backdrop-filter: blur(2px);
   padding: 1rem;
 }
 
-.modal-content {
-  background: #fff;
-  padding: 2rem;
-  border-radius: 12px;
+.modal-panel {
+  background: white;
   width: 100%;
-  max-width: 550px;
+  max-width: 900px;
+  border-radius: 1rem;
   max-height: 90vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   position: relative;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-  animation: zoomIn 0.2s ease-out;
+  overflow: hidden;
 }
 
-@keyframes zoomIn {
-  from { transform: scale(0.95); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+.modal-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #eee;
 }
 
-.modal-close {
+.modal-body {
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+.modal-close-btn {
   position: absolute;
   top: 1rem;
-  right: 1rem;
+  right: 1.5rem;
   background: none;
   border: none;
   font-size: 2rem;
-  line-height: 1;
-  color: #9ca3af;
   cursor: pointer;
-  transition: color 0.2s;
+  color: #9ca3af;
 }
 
-.modal-close:hover {
-  color: #374151;
+.form-grid {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 2rem;
 }
 
-.product-form .form-group {
-  margin-bottom: 1.2rem;
+@media (max-width: 768px) {
+
+  .form-grid,
+  .view-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
-.product-form label {
-  display: block;
-  margin-bottom: 0.4rem;
-  font-weight: 600;
-  font-size: 0.95rem;
-  color: #374151;
-}
-
-.required {
-  color: #dc2626;
-}
-
-.product-form input[type="text"],
-.product-form input[type="number"],
-.product-form textarea,
-.product-form select {
+.main-preview-box {
   width: 100%;
-  padding: 0.6rem 0.8rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 1rem;
-  transition: border-color 0.2s;
-}
-
-.product-form input:focus,
-.product-form textarea:focus,
-.product-form select:focus {
-  outline: none;
-  border-color: #10b981;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-}
-
-/* --- Style mới cho Upload File --- */
-.image-upload-container {
-  border: 2px dashed #d1d5db;
+  height: 300px;
   border-radius: 8px;
-  padding: 1rem;
-  text-align: center;
-  background-color: #f9fafb;
-}
-
-.file-input {
-  margin-bottom: 1rem;
-}
-
-.image-preview-box {
-  margin-top: 0.5rem;
-}
-
-.preview-img {
-  max-width: 100%;
-  max-height: 200px;
-  border-radius: 6px;
+  overflow: hidden;
   border: 1px solid #eee;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.preview-label {
-  font-size: 0.8rem;
-  color: #6b7280;
-  margin-top: 0.25rem;
-}
-
-.no-image-placeholder {
-  color: #9ca3af;
-  font-style: italic;
-  font-size: 0.9rem;
-  padding: 1rem;
-}
-
-.form-actions {
+  background: #f8f8f8;
   display: flex;
-  justify-content: flex-end;
-  gap: 0.8rem;
-  margin-top: 2rem;
-  padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
 }
 
-.btn-cancel {
-  background: white;
-  color: #374151;
-  border: 1px solid #d1d5db;
-  padding: 0.6rem 1.2rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-}
-
-.btn-submit {
-  background: #10b981;
-  color: white;
-  border: none;
-  padding: 0.6rem 1.5rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.btn-submit:hover { background-color: #059669; }
-.btn-cancel:hover { background-color: #f3f4f6; }
-.btn-submit:disabled { opacity: 0.7; cursor: not-allowed; }
-
-/* Modal View Mode */
-.view-mode {
-    text-align: left;
-}
-
-.view-image-wrapper {
-    text-align: center;
-    background: #f3f4f6;
-    padding: 1rem;
-    border-radius: 8px;
-    margin-bottom: 1.5rem;
-}
-
-.modal-product-image {
-  max-width: 100%;
-  max-height: 300px;
+.main-img {
+  width: 100%;
+  height: 100%;
   object-fit: contain;
+}
+
+.thumbnail-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+}
+
+/* STYLE CHO PHẦN THUMBNAIL VÀ NÚT XOÁ */
+.thumb-item {
+  width: 60px;
+  height: 60px;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  overflow: visible;
+  cursor: pointer;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.thumb-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   border-radius: 4px;
 }
 
-.modal-product-name {
+.thumb-item.active {
+  border-color: #029d76;
+  opacity: 0.8;
+}
+
+.remove-btn {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #ef4444;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  text-align: center;
+  line-height: 18px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+.remove-btn:hover {
+  background: #dc2626;
+  transform: scale(1.1);
+}
+
+.hint-text {
+  font-size: 0.8rem;
+  color: #ef4444;
+  margin-top: 5px;
+  font-style: italic;
+}
+
+.hidden-input {
+  display: none;
+}
+
+.view-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.view-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.view-main-image {
+  height: 400px;
+  background: #f3f4f6;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.view-main-image img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.view-thumbnails {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.view-thumb {
+  width: 70px;
+  height: 70px;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.view-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.view-thumb:hover,
+.view-thumb.active {
+  border-color: #029d76;
+  transform: scale(1.05);
+}
+
+.view-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.detail-name {
+  font-size: 1.8rem;
+  margin: 0;
   color: #111827;
-  font-size: 1.5rem;
-  margin-bottom: 0.25rem;
 }
 
-.modal-product-price {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #dc2626;
-  margin-bottom: 1.5rem;
+.detail-price {
+  font-size: 2rem;
+  color: #029d76;
+  font-weight: 800;
 }
 
-.info-row {
-    margin-bottom: 1rem;
+.detail-desc {
+  background: #f9fafb;
+  padding: 1rem;
+  border-radius: 8px;
+  line-height: 1.6;
 }
 
-.status-badge {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.875rem;
+.status-pill {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
   font-weight: 600;
 }
 
-.status-active {
-  background: #d1fae5;
-  color: #065f46;
+.status-success {
+  background: #dcfce7;
+  color: #166534;
 }
 
-.status-inactive {
+.status-error {
   background: #fee2e2;
   color: #991b1b;
+}
+
+.view-actions {
+  margin-top: auto;
+  display: flex;
+  gap: 1rem;
+  padding-top: 1rem;
+}
+
+.view-actions button {
+  flex: 1;
+  padding: 0.8rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-label {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #029d76;
+  box-shadow: 0 0 0 3px rgba(2, 157, 118, 0.1);
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 3rem;
+}
+
+.page-numbers {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.btn-page {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #eee;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-page.active {
+  background: #029d76;
+  color: white;
+  border-color: #029d76;
+}
+
+.loader {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #029d76;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 </style>
