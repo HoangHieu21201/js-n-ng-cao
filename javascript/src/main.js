@@ -1,26 +1,11 @@
+import { createApp } from 'vue'
+import './style.css' // Nếu bạn có file css chung
+import App from './App.vue'
+import router from './router' // Import router từ file index.js vừa tạo
 
-import { createApp } from "vue";
-import App from "./App.vue";
-import router from "../router/index.js";
+const app = createApp(App)
 
+// Kích hoạt router
+app.use(router)
 
-
-const app = createApp(App);
-const options = {
-    position: "top-right",
-    timeout: 4000, 
-    closeOnClick: true,
-    pauseOnFocusLoss: true,
-    pauseOnHover: true,
-    draggable: true,
-    draggablePercent: 0.6,
-    showCloseButtonOnHover: false,
-    hideProgressBar: false,
-    closeButton: "button",
-    icon: true,
-    rtl: false
-};
-app.use(router);
-app.use(store);
-app.use(Toast, options);
-app.mount("#app");
+app.mount('#app')
