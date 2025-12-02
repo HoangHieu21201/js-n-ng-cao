@@ -1,8 +1,12 @@
 <script setup>
-import { ref, computed, onMounted, reactive } from 'vue';
+import { ref, computed, onMounted, reactive, nextTick } from 'vue';
 import Swal from 'sweetalert2';
-// Import thư viện socket.io-client
 import { io } from "socket.io-client";
+
+// --- IMPORT QUILL THỦ CÔNG ---
+// Import đối tượng Quill và CSS để khởi tạo thủ công thay vì dùng Component bị lỗi
+import { Quill } from '@vueup/vue-quill';
+import '@vueup/vue-quill/dist/vue-quill.snow.css';
 
 const API_URL = 'http://localhost:8080';
 
@@ -15,8 +19,11 @@ const isModalVisible = ref(false);
 const modalMode = ref('view');
 const fileInputRef = ref(null);
 
+// --- QUILL STATE ---
+const quillEditorRef = ref(null);
+let quillInstance = null;
+
 // --- STATE MỚI CHO QUẢN LÝ ẢNH LINH HOẠT ---
-// galleryItems sẽ chứa object: { type: 'server'|'local', url: string, file?: File, name?: string }
 const galleryItems = ref([]);
 const activeImage = ref('');
 
@@ -125,7 +132,6 @@ const onFileChange = (event) => {
       return;
     }
 
-    // Thay vì ghi đè, ta thêm vào danh sách galleryItems
     files.forEach(file => {
       const url = URL.createObjectURL(file);
       galleryItems.value.push({
@@ -135,25 +141,20 @@ const onFileChange = (event) => {
       });
     });
 
-    // Active ảnh vừa thêm cuối cùng
     if (galleryItems.value.length > 0) {
       activeImage.value = galleryItems.value[galleryItems.value.length - 1].url;
     }
-
-    // Reset input để người dùng có thể chọn tiếp
     event.target.value = null;
   }
 };
 
-// Hàm xoá từng ảnh trong Modal
 const removeGalleryItem = (index) => {
   const item = galleryItems.value[index];
   if (item.type === 'local') {
-    URL.revokeObjectURL(item.url); // Giải phóng bộ nhớ nếu là ảnh mới
+    URL.revokeObjectURL(item.url);
   }
   galleryItems.value.splice(index, 1);
 
-  // Cập nhật lại ảnh active nếu ảnh đang xem bị xoá
   if (galleryItems.value.length > 0) {
     activeImage.value = galleryItems.value[0].url;
   } else {
@@ -161,9 +162,41 @@ const removeGalleryItem = (index) => {
   }
 };
 
-const openModal = (mode, product = null) => {
+// Cấu hình Toolbar cho Quill
+const quillModules = {
+  toolbar: [
+    ['bold', 'italic', 'underline'],
+    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+    [{ 'header': [1, 2, false] }],
+    ['link', 'clean']
+  ]
+};
+
+// --- HÀM KHỞI TẠO QUILL THỦ CÔNG ---
+const initQuill = async () => {
+  await nextTick(); // Đợi DOM được render xong (vì Modal dùng v-if)
+  
+  if (quillEditorRef.value) {
+    // Tạo instance mới
+    quillInstance = new Quill(quillEditorRef.value, {
+      theme: 'snow',
+      modules: quillModules,
+      placeholder: 'Nhập mô tả sản phẩm...',
+    });
+
+    // Set nội dung ban đầu
+    quillInstance.root.innerHTML = formData.description || '';
+
+    // Lắng nghe sự kiện thay đổi
+    quillInstance.on('text-change', () => {
+      formData.description = quillInstance.root.innerHTML;
+    });
+  }
+};
+
+const openModal = async (mode, product = null) => {
   modalMode.value = mode;
-  galleryItems.value = []; // Reset danh sách ảnh
+  galleryItems.value = [];
   activeImage.value = '';
 
   if (mode === 'add') {
@@ -173,7 +206,6 @@ const openModal = (mode, product = null) => {
     Object.assign(formData, { ...product });
     const serverImages = parseImages(product.image);
 
-    // Đưa ảnh cũ từ server vào danh sách galleryItems
     serverImages.forEach(imgName => {
       galleryItems.value.push({
         type: 'server',
@@ -190,12 +222,17 @@ const openModal = (mode, product = null) => {
   }
   isModalVisible.value = true;
   document.body.style.overflow = "hidden";
+  
+  // Khởi tạo Quill nếu không phải chế độ xem
+  if (mode !== 'view') {
+    await initQuill();
+  }
 };
 
 const closeModal = () => {
   isModalVisible.value = false;
   document.body.style.overflow = "";
-  // Dọn dẹp memory blob
+  quillInstance = null; // Reset instance
   galleryItems.value.forEach(item => {
     if (item.type === 'local') URL.revokeObjectURL(item.url);
   });
@@ -216,22 +253,16 @@ const handleSubmit = async () => {
     data.append('description', formData.description || '');
     data.append('status', formData.status);
 
-    // --- XỬ LÝ ẢNH LINH HOẠT ---
-
-    // 1. Lọc lấy danh sách tên ảnh cũ muốn giữ lại
     const oldImagesToKeep = galleryItems.value
       .filter(item => item.type === 'server')
       .map(item => item.name);
 
-    // Gửi danh sách ảnh cũ dạng JSON String
     data.append('images', JSON.stringify(oldImagesToKeep));
 
-    // 2. Lọc lấy danh sách file mới để upload
     const newFilesToUpload = galleryItems.value
       .filter(item => item.type === 'local')
       .map(item => item.file);
 
-    // Append từng file mới
     newFilesToUpload.forEach(file => {
       data.append('images', file);
     });
@@ -292,6 +323,7 @@ onMounted(() => {
     });
   });
 });
+
 </script>
 
 <template>
@@ -320,7 +352,8 @@ onMounted(() => {
         </div>
         <div class="card-body">
           <h3 class="card-title">{{ product.name }}</h3>
-          <p class="card-desc">{{ product.description || 'Chưa có mô tả' }}</p>
+          <!-- Loại bỏ hiển thị mô tả thô ở card để tránh vỡ layout nếu HTML dài, hoặc strip HTML nếu cần -->
+          <p class="card-desc" v-html="product.description ? product.description.replace(/<[^>]*>?/gm, '').substring(0, 100) + '...' : 'Chưa có mô tả'"></p>
           <div class="card-meta"><span class="price-tag">{{ formatPrice(product.price) }}</span></div>
         </div>
         <div class="card-footer" @click.stop>
@@ -368,12 +401,9 @@ onMounted(() => {
 
               <!-- Danh sách Thumbnail linh hoạt -->
               <div class="thumbnail-strip" v-if="galleryItems.length > 0">
-                <!-- Duyệt qua mảng galleryItems chung -->
                 <div v-for="(item, idx) in galleryItems" :key="idx" class="thumb-item"
                   :class="{ 'active': activeImage === item.url }" @click="activeImage = item.url">
                   <img :src="item.url" @error="handleImageError" />
-
-                  <!-- Nút xoá cho từng ảnh -->
                   <div class="remove-btn" @click.stop="removeGalleryItem(idx)" title="Xoá ảnh này">
                     &times;
                   </div>
@@ -406,10 +436,15 @@ onMounted(() => {
                   <option :value="0">Ngừng kinh doanh</option>
                 </select>
               </div>
-              <div class="form-group">
-                <label>Mô tả</label>
-                <textarea v-model="formData.description" rows="4" class="form-control"></textarea>
+              
+              <!-- QUILL EDITOR SECTION (THỦ CÔNG) -->
+              <div class="form-group quill-group">
+                <label>Mô tả chi tiết</label>
+                <div class="quill-wrapper">
+                    <div ref="quillEditorRef" style="height: 200px;"></div>
+                </div>
               </div>
+
             </div>
           </div>
           <div class="modal-footer">
@@ -442,7 +477,8 @@ onMounted(() => {
             <div class="detail-price">{{ formatPrice(formData.price) }}</div>
             <div class="detail-section">
               <h4>Mô tả:</h4>
-              <p class="detail-desc">{{ formData.description || 'Không có mô tả.' }}</p>
+              <!-- Sử dụng v-html để hiển thị nội dung Rich Text -->
+              <div class="detail-desc ql-editor" v-html="formData.description || '<p>Không có mô tả.</p>'"></div>
             </div>
             <div class="view-actions">
               <button class="btn btn-outline-primary" @click="modalMode = 'edit'">✏️ Sửa thông tin</button>
@@ -456,7 +492,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* Style gốc giữ nguyên, chỉ thêm phần remove-btn cho nút xoá ảnh */
 * {
   box-sizing: border-box;
 }
@@ -714,7 +749,6 @@ onMounted(() => {
   margin-bottom: 10px;
 }
 
-/* STYLE CHO PHẦN THUMBNAIL VÀ NÚT XOÁ */
 .thumb-item {
   width: 60px;
   height: 60px;
@@ -846,11 +880,21 @@ onMounted(() => {
   font-weight: 800;
 }
 
+/* CSS CHO PHẦN HIỂN THỊ CHI TIẾT */
 .detail-desc {
   background: #f9fafb;
   padding: 1rem;
   border-radius: 8px;
   line-height: 1.6;
+  /* Đảm bảo nội dung HTML trong Quill không bị tràn */
+  overflow-wrap: break-word;
+}
+/* Style cho nội dung bên trong v-html nếu cần */
+.detail-desc :deep(ul), .detail-desc :deep(ol) {
+    padding-left: 1.5rem;
+}
+.detail-desc :deep(p) {
+    margin-bottom: 0.5rem;
 }
 
 .status-pill {
@@ -903,6 +947,24 @@ onMounted(() => {
   outline: none;
   border-color: #029d76;
   box-shadow: 0 0 0 3px rgba(2, 157, 118, 0.1);
+}
+
+/* QUILL CUSTOM STYLES */
+.quill-wrapper {
+    background: white;
+    border-radius: 0.5rem;
+}
+/* Style lại cho khung soạn thảo thủ công */
+:deep(.ql-toolbar) {
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+    background: #f9fafb;
+}
+:deep(.ql-container) {
+    border-bottom-left-radius: 0.5rem;
+    border-bottom-right-radius: 0.5rem;
+    font-size: 1rem;
+    background: white;
 }
 
 .pagination-container {
